@@ -1,0 +1,44 @@
+{
+  "name": "ASCIIGrid",
+  "version": "0.1.0",
+  "description": "Show a beautiful table in your terminal",
+  "type": "module",
+  "scripts": {
+    "start": "node dist/main.mjs",
+    "res:build": "rescript",
+    "res:dev": "rescript watch",
+    "res:clean": "rescript clean",
+    "bundle": "rolldown -c",
+    "res:test": "retest ./test/res/*.res.mjs"
+  },
+  "author": {
+    "name": "José Martínez Santana"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetalbolicX/ASCIIGrid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MetalbolicX/ASCIIGrid/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@rescript/runtime": "^12.2.0"
+  },
+  "devDependencies": {
+    "rescript": "^12.2.0",
+    "rescript-test": "^8.0.0",
+    "rolldown": "1.0.0-rc.18",
+    "rollup-plugin-esbuild": "^6.2.1"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "ASCIIGrid": "dist/main.mjs"
+  },
+  "main": "dist/main.mjs"
+}

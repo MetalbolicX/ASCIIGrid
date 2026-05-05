@@ -1,0 +1,17 @@
+{
+  "name": "ASCIIGrid",
+  "sources": [
+    { "dir": "test/res", "subdirs": true, "type": "dev" },
+    { "dir": "src", "subdirs": true }
+  ],
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs",
+  "dev-dependencies": [
+    "rescript-test"
+  ],
+  "dependencies": [],
+  "compiler-flags": []
+}
