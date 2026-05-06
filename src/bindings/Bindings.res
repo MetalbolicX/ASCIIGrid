@@ -15,10 +15,19 @@ module Fs = {
 module Process = {
   @module("node:process") external argv: array<string> = "argv"
   @module("node:process") external exit: int => unit = "exit"
+  @val @scope("process") external nextTick: (() => unit) => unit = "nextTick"
 
   module Stdout = {
     @module("node:process") @scope("stdout")
     external write: string => bool = "write"
+
+    /** Write string with callback invoked on drain. Returns false when buffer is full. */
+    @module("node:process") @scope("stdout")
+    external writeWithCallback: (string, () => unit) => bool = "write"
+
+    /** Register a one-time callback for the drain event (auto-removes after firing). */
+    @module("node:process") @scope("stdout")
+    external onceDrain: (() => unit) => unit = "once"
   }
 
   module Stderr = {
@@ -34,6 +43,61 @@ module Stdio = {
   @module("node:process") external stdin: readableStream = "stdin"
   @module("node:stream/consumers")
   external readAll: readableStream => promise<string> = "text"
+}
+
+module Readline = {
+  /** Opaque type for Node.js readline interface. */
+  type interface
+
+  /** Opaque type for the async iterator of a readline interface */
+  type asyncIterator
+
+  /** Type for the result of iterator.next() */
+  type iteratorResult = {
+    value: string,
+    done: bool,
+  }
+
+  type config = {
+    input: Stdio.readableStream,
+    crlfDelay?: int,
+    terminal?: bool,
+  }
+
+  @module("node:readline/promises")
+  external createInterface: config => interface = "createInterface"
+
+  /**
+   * Get async iterator from readline interface.
+   */
+  @send
+  external getAsyncIterator: interface => asyncIterator = "Symbol.asyncIterator"
+
+  /**
+   * Returns the next line from the async iterator as a Promise.
+   */
+  @send
+  external next: asyncIterator => promise<iteratorResult> = "next"
+
+  /** Register a handler for the 'line' event — receives each line as it's read. */
+  @send
+  external onLine: (interface, string, (string => unit)) => interface = "on"
+
+  /** Register a handler for the 'close' event — fired when input is exhausted. */
+  @send
+  external onClose: (interface, string, (() => unit)) => interface = "on"
+
+  /**
+   * Register a handler for the 'error' event.
+   * Note: We name it onError2 to avoid conflict with the existing onError (which
+   * also takes (interface, string, callback) but for a different callback arity).
+   */
+  @send
+  external onError2: (interface, string, ((string) => unit)) => interface = "on"
+
+  /** Close the readline interface, cleaning up resources. */
+  @send
+  external close: interface => unit = "close"
 }
 
 module Util = {

@@ -34,15 +34,20 @@ let validateTitle = (
     }
   }
 
-let renderNormalized = (rawData: array<array<string>>, options: AsciiGridOptions.t): result<
-  string,
-  string,
-> => {
+let renderNormalized = (
+  rawData: array<array<string>>,
+  options: AsciiGridOptions.t,
+  ~columnWidths: option<array<int>>=?,
+): result<string, string> => {
   switch AsciiGridLayout.validateShape(rawData) {
   | Error(msg) => Error(msg)
   | Ok() => {
       let transformed = AsciiGridTransformers.applySpreadsheetMode(rawData, options)
-      let colWidths = AsciiGridLayout.computeColumnWidths(transformed)
+      // Use provided columnWidths if present and non-empty, otherwise compute from data
+      let colWidths = switch columnWidths {
+      | Some(widths) if widths->Array.length > 0 => widths
+      | _ => AsciiGridLayout.computeColumnWidths(transformed)
+      }
       let theme = options.AsciiGridOptions.theme
       let padding = options.AsciiGridOptions.padding
 
