@@ -11,26 +11,24 @@ let extractKeysOrdered = (rows: array<rowObject>): array<string> => {
     | Some(_) => ()
     | None => {
         Dict.set(seen, key, true)
-        keys->Belt.Array.push(key)
+        keys->Array.push(key)
       }
     }
 
-  rows->Belt.Array.forEach(row =>
-    Dict.toArray(row)
-    ->Belt.Array.forEach(((key, _value)) => addKey(key)))
+  rows->Array.forEach(row => Dict.toArray(row)->Array.forEach(((key, _value)) => addKey(key)))
   keys
 }
 
 let buildRow = (keys: array<string>, row: rowObject): array<string> =>
-  keys->Belt.Array.map(key => Dict.get(row, key)->Belt.Option.getWithDefault(""))
+  keys->Array.map(key => Dict.get(row, key)->Option.getOr(""))
 
 let normalizeObjects = (rows: array<rowObject>): array<array<string>> => {
-  if rows->Belt.Array.length == 0 {
+  if rows->Array.length == 0 {
     []
   } else {
     let keys = extractKeysOrdered(rows)
-    let header = keys->Belt.Array.map(key => key)
-    let body = rows->Belt.Array.map(row => buildRow(keys, row))
+    let header = keys->Array.map(key => key)
+    let body = rows->Array.map(row => buildRow(keys, row))
     [header, ...body]
   }
 }
