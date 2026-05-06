@@ -35,10 +35,19 @@ const matrix = [["Name", "Age", "City"], ["Alice", 30, "NYC"], ["Bob", 25, "LA"]
 describe("renderTable", () => {
   it("renders a basic 2D matrix", () => {
     const result = renderTable([["a", "bb"], ["ccc", "d"]]);
-    assert.match(result, /\+------/);
-    assert.match(result, /-----\+/);
-    assert.match(result, /\| a/);
-    assert.match(result, /\| ccc/);
+    const lines = result.split("\n");
+    // 5 lines: top sep, header, middle sep, data, bottom sep
+    assert.strictEqual(lines.length, 5);
+    // col widths: max(1,3)=3 and max(2,1)=2, padding=1 → 3+2=5 and 2+2=4 dashes
+    const sep = "+-----+----+";
+    assert.strictEqual(lines[0], sep, "top separator wrong");
+    assert.strictEqual(lines[2], sep, "middle separator wrong");
+    assert.strictEqual(lines[4], sep, "bottom separator wrong");
+    // all lines same width (structural alignment)
+    assert.ok(lines.every((l) => l.length === sep.length), "lines have inconsistent widths");
+    // cell content
+    assert.match(lines[1], /^\| a\s+\| bb \|$/);
+    assert.match(lines[3], /^\| ccc \| d\s+\|$/);
   });
 
   it("renders array of objects via Adapter pattern", () => {
@@ -64,8 +73,17 @@ describe("renderTable", () => {
 
   it("applies title block", () => {
     const result = renderTable(matrix, { title: "Users" });
-    assert.match(result, /Users/);
-    assert.match(result, /\+-{23}\+/);
+    const lines = result.split("\n");
+    // title_top: all columns merged → inner = (5+2)+(3+2)+(4+2)+2 connectors = 20 dashes
+    assert.strictEqual(lines[0], "+--------------------+", "title top separator wrong");
+    // title line must be same width as separator and contain "Users"
+    assert.strictEqual(lines[0].length, lines[1].length, "title line width mismatch");
+    assert.match(lines[1], /^\|.*Users.*\|$/);
+    // title_bottom must match body separators
+    const bodySep = "+-------+-----+------+";
+    assert.strictEqual(lines[2], bodySep, "title bottom separator wrong");
+    // title top and body separator must have equal width (box alignment)
+    assert.strictEqual(lines[0].length, lines[2].length, "title and body widths differ");
   });
 
   it("throws TableError when title is too large", () => {

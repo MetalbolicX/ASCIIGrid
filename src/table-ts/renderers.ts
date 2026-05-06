@@ -21,45 +21,44 @@ const buildSeparatorChars = (
 ): string => {
   let result = "";
 
+  // Each segment is: padding + content + padding = colWidth + padding*2 chars.
+  // No extra +1 — the connector character itself is added separately.
   switch (type) {
     case "top":
       result += theme.upperLeft;
       for (let i = 0; i < colWidths.length; i++) {
-        result += theme.line.repeat(colWidths[i] + padding * 2 + 1);
-        if (i < colWidths.length - 1) result += theme.intersectionTop;
-        else result += theme.upperRight;
+        result += theme.line.repeat(colWidths[i] + padding * 2);
+        result += i < colWidths.length - 1 ? theme.intersectionTop : theme.upperRight;
       }
       break;
     case "bottom":
       result += theme.lowerLeft;
       for (let i = 0; i < colWidths.length; i++) {
-        result += theme.line.repeat(colWidths[i] + padding * 2 + 1);
-        if (i < colWidths.length - 1) result += theme.intersectionBottom;
-        else result += theme.lowerRight;
+        result += theme.line.repeat(colWidths[i] + padding * 2);
+        result += i < colWidths.length - 1 ? theme.intersectionBottom : theme.lowerRight;
       }
       break;
     case "title_top":
+      // Title spans all columns — no intermediate connectors, just a plain top border.
       result += theme.upperLeft;
-      for (let i = 0; i < colWidths.length; i++) {
-        result += theme.line.repeat(colWidths[i] + padding * 2 + 1);
-        if (i < colWidths.length - 1) result += theme.line;
-        else result += theme.upperRight;
-      }
+      result += theme.line.repeat(
+        colWidths.reduce((s, w) => s + w + padding * 2, 0) + (colWidths.length - 1)
+      );
+      result += theme.upperRight;
       break;
     case "title_bottom":
+      // Transition from title row to table body — uses full-width connectors.
       result += theme.intersectionLeft;
       for (let i = 0; i < colWidths.length; i++) {
-        result += theme.line.repeat(colWidths[i] + padding * 2 + 1);
-        if (i < colWidths.length - 1) result += theme.intersectionRight;
-        else result += theme.intersectionRight;
+        result += theme.line.repeat(colWidths[i] + padding * 2);
+        result += i < colWidths.length - 1 ? theme.intersection : theme.intersectionRight;
       }
       break;
     case "middle":
       result += theme.intersectionLeft;
       for (let i = 0; i < colWidths.length; i++) {
-        result += theme.line.repeat(colWidths[i] + padding * 2 + 1);
-        if (i < colWidths.length - 1) result += theme.intersection;
-        else result += theme.intersectionRight;
+        result += theme.line.repeat(colWidths[i] + padding * 2);
+        result += i < colWidths.length - 1 ? theme.intersection : theme.intersectionRight;
       }
       break;
   }
@@ -86,7 +85,8 @@ const renderCell = (
   const targetLen = colWidth + padding * 2;
 
   if (align && isNumericCell(value)) {
-    const leftSpaces = Math.max(0, targetLen - value.length);
+    // Right-align: reserve right pad, left-fill remainder.
+    const leftSpaces = Math.max(0, targetLen - value.length - pad.length);
     return " ".repeat(leftSpaces) + value + pad;
   }
   const rightSpaces = Math.max(0, targetLen - value.length - pad.length);
@@ -113,12 +113,14 @@ const renderTitleBlock = (
 ): string => {
   const { theme, padding } = options;
   const separator = buildSeparatorChars(colWidths, padding, "title_top", theme);
+  // totalLen = inner width between the two corner characters.
   const totalLen = separator.length - 2;
   if (title.length > totalLen - 2) {
     titleError("Title is too large");
   }
 
-  const rem = totalLen - 2 - title.length;
+  // title + left + right pads must fill exactly totalLen chars.
+  const rem = totalLen - title.length;
   const half = Math.floor(rem / 2);
   const leftPad = " ".repeat(half);
   const rightPad = " ".repeat(half + (rem % 2));
