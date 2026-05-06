@@ -49,15 +49,6 @@ module Readline = {
   /** Opaque type for Node.js readline interface. */
   type interface
 
-  /** Opaque type for the async iterator of a readline interface */
-  type asyncIterator
-
-  /** Type for the result of iterator.next() */
-  type iteratorResult = {
-    value: string,
-    done: bool,
-  }
-
   type config = {
     input: Stdio.readableStream,
     crlfDelay?: int,
@@ -66,18 +57,6 @@ module Readline = {
 
   @module("node:readline/promises")
   external createInterface: config => interface = "createInterface"
-
-  /**
-   * Get async iterator from readline interface.
-   */
-  @send
-  external getAsyncIterator: interface => asyncIterator = "Symbol.asyncIterator"
-
-  /**
-   * Returns the next line from the async iterator as a Promise.
-   */
-  @send
-  external next: asyncIterator => promise<iteratorResult> = "next"
 
   /** Register a handler for the 'line' event — receives each line as it's read. */
   @send

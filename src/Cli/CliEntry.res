@@ -241,19 +241,17 @@ let writeStdoutStreaming = (lines: array<string>): promise<unit> => {
       let wrote = Bindings.Process.Stdout.writeWithCallback(line, () => ())
 
       if wrote {
-        // Buffer had room — move to next line immediately (but still async via Promise)
+        // Buffer had room — move to next line after next tick
         Promise.make((resolve, _reject) => {
           Bindings.Process.nextTick(() => {
-            loop(idx + 1)->ignore
-            resolve()
+            loop(idx + 1)->Promise.thenResolve(_ => resolve())->ignore
           })
         })
       } else {
         // Buffer full — wait for drain, then continue
         Promise.make((resolve, _reject) => {
           Bindings.Process.Stdout.onceDrain(() => {
-            loop(idx + 1)->ignore
-            resolve()
+            loop(idx + 1)->Promise.thenResolve(_ => resolve())->ignore
           })
         })
       }
@@ -267,30 +265,32 @@ let writeStdoutStreaming = (lines: array<string>): promise<unit> => {
  * Write lines to stdout with backpressure awareness and timeout.
  * If drain doesn't occur within 5 seconds, resolves anyway.
  */
-/**
- * Write lines to stdout with backpressure awareness and timeout.
- * If drain doesn't occur within 5 seconds, resolves anyway.
- */
-let rec writeStdoutStreamingWithTimeout: (array<string>, int) => promise<unit> = (lines, idx) => {
-  if idx >= lines->Array.length {
-    Promise.resolve()
-  } else {
-    let line = lines->Array.get(idx)->Option.getOr("")
-
-    let cb = () => {
-      writeStdoutStreamingWithTimeout(lines, idx + 1)->ignore
-    }
-
-    let wrote = Bindings.Process.Stdout.writeWithCallback(line, cb)
-
-    if wrote {
-      writeStdoutStreamingWithTimeout(lines, idx + 1)
-    } else {
-      // Buffer full, just resolve (skip drain wait for simplicity)
-      // In production, we'd set up timeout + drain listener here
+let writeStdoutStreamingWithTimeout = (lines: array<string>): promise<unit> => {
+  let rec loop = (idx: int): promise<unit> => {
+    if idx >= lines->Array.length {
       Promise.resolve()
+    } else {
+      let line = lines->Array.get(idx)->Option.getOr("") ++ "\n"
+      let wrote = Bindings.Process.Stdout.writeWithCallback(line, () => ())
+
+      if wrote {
+        Promise.make((resolve, _reject) => {
+          Bindings.Process.nextTick(() => {
+            loop(idx + 1)->Promise.thenResolve(_ => resolve())->ignore
+          })
+        })
+      } else {
+        // Buffer full — wait for drain
+        Promise.make((resolve, _reject) => {
+          Bindings.Process.Stdout.onceDrain(() => {
+            loop(idx + 1)->Promise.thenResolve(_ => resolve())->ignore
+          })
+        })
+      }
     }
   }
+
+  loop(0)
 }
 
 /**
@@ -375,55 +375,6 @@ let parseFormat = (rawFormat: option<string>): result<string, cliError> => {
   }
 }
 
-let stringifyJsonCell = (value: JSON.t): string =>
-  switch JSON.Decode.string(value) {
-  | Some(s) => s
-  | None =>
-    switch JSON.Decode.float(value) {
-    | Some(n) => Float.toString(n)
-    | None =>
-      switch JSON.Decode.bool(value) {
-      | Some(true) => "true"
-      | Some(false) => "false"
-      | None =>
-        switch JSON.Decode.null(value) {
-        | Some(_) => ""
-        | None => ""
-        }
-      }
-    }
-  }
-
-let jsonToCellValue = (value: JSON.t): AsciiGridAdapters.cellValue =>
-  switch JSON.Decode.string(value) {
-  | Some(s) => AsciiGridAdapters.CellString(s)
-  | None =>
-    switch JSON.Decode.float(value) {
-    | Some(n) =>
-      if Float.isFinite(n) && mathTruncF(n) == n {
-        AsciiGridAdapters.CellInt(mathTruncI(n))
-      } else {
-        AsciiGridAdapters.CellFloat(n)
-      }
-    | None =>
-      switch JSON.Decode.bool(value) {
-      | Some(b) => AsciiGridAdapters.CellBool(b)
-      | None => AsciiGridAdapters.CellNull
-      }
-    }
-  }
-
-let buildRichRow = (obj: dict<JSON.t>): AsciiGridAdapters.richRowObject =>
-  obj->Dict.toArray->Array.reduce(Dict.make(), (acc, (key, value)) => {
-    Dict.set(acc, key, jsonToCellValue(value))
-    acc
-  })
-
-let buildStringRow = (obj: dict<JSON.t>): AsciiGridAdapters.rowObject =>
-  obj->Dict.toArray->Array.reduce(Dict.make(), (acc, (key, value)) => {
-    Dict.set(acc, key, stringifyJsonCell(value))
-    acc
-  })
 
 let parseJsonInput = (
   ~raw: string,
