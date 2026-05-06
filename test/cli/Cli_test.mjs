@@ -156,4 +156,40 @@ const runCliSimple = (args) => {
   console.log('  PASS');
 }
 
+{
+  console.log('Testing --theme oracle...');
+  const { stdout } = runCli('--theme oracle', '[["Name"],["Alice"]]');
+  assert(stdout.includes('Alice'), 'oracle output should contain Alice');
+  assert(stdout.includes('+'), 'oracle output should contain border chars');
+  console.log('  PASS');
+}
+
+{
+  console.log('Testing invalid --theme exits with code 1...');
+  const tmpFile = `/tmp/asciigrid-test-${Date.now()}.json`;
+  writeFileSync(tmpFile, '[["Name"],["Alice"]]');
+  try {
+    const result = spawnSync('node', [cliPath, '--input', tmpFile, '--theme', 'invalid'], { encoding: 'utf8' });
+    assert(result.status === 1, `invalid theme should exit with code 1, got ${result.status}`);
+    assert(result.stderr.includes('Invalid theme'), 'stderr should mention Invalid theme');
+  } finally {
+    try { unlinkSync(tmpFile); } catch {}
+  }
+  console.log('  PASS');
+}
+
+{
+  console.log('Testing invalid --format exits with code 1...');
+  const tmpFile = `/tmp/asciigrid-test-${Date.now()}.json`;
+  writeFileSync(tmpFile, '[["Name"],["Alice"]]');
+  try {
+    const result = spawnSync('node', [cliPath, '--input', tmpFile, '--format', 'csv'], { encoding: 'utf8' });
+    assert(result.status === 1, `invalid format should exit with code 1, got ${result.status}`);
+    assert(result.stderr.includes('Invalid format'), 'stderr should mention Invalid format');
+  } finally {
+    try { unlinkSync(tmpFile); } catch {}
+  }
+  console.log('  PASS');
+}
+
 console.log('\nAll CLI integration tests passed!');

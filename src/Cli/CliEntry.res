@@ -1,10 +1,13 @@
 type cliError = (int, string)
 
+// Both bind to Math.trunc. Float variant is used for the isInteger check
+// (needs float == float); int variant avoids the 32-bit |0 truncation of
+// Float.toInt so large integer-valued JSON numbers survive round-trip.
 @val @scope("Math")
-external truncFloat: float => int = "trunc"
+external mathTruncF: float => float = "trunc"
 
 @val @scope("Math")
-external truncFloatValue: float => float = "trunc"
+external mathTruncI: float => int = "trunc"
 
 @val @scope("JSON")
 external jsonParseUnsafe: string => JSON.t = "parse"
@@ -113,8 +116,8 @@ let jsonToCellValue = (value: JSON.t): AsciiGridAdapters.cellValue =>
   | None =>
     switch JSON.Decode.float(value) {
     | Some(n) =>
-      if Float.isFinite(n) && truncFloatValue(n) == n {
-        AsciiGridAdapters.CellInt(truncFloat(n))
+      if Float.isFinite(n) && mathTruncF(n) == n {
+        AsciiGridAdapters.CellInt(mathTruncI(n))
       } else {
         AsciiGridAdapters.CellFloat(n)
       }
@@ -125,6 +128,18 @@ let jsonToCellValue = (value: JSON.t): AsciiGridAdapters.cellValue =>
       }
     }
   }
+
+let buildRichRow = (obj: dict<JSON.t>): AsciiGridAdapters.richRowObject =>
+  obj->Dict.toArray->Array.reduce(Dict.make(), (acc, (key, value)) => {
+    Dict.set(acc, key, jsonToCellValue(value))
+    acc
+  })
+
+let buildStringRow = (obj: dict<JSON.t>): AsciiGridAdapters.rowObject =>
+  obj->Dict.toArray->Array.reduce(Dict.make(), (acc, (key, value)) => {
+    Dict.set(acc, key, stringifyJsonCell(value))
+    acc
+  })
 
 let parseJsonInput = (
   ~raw: string,
@@ -175,10 +190,7 @@ let parseJsonInput = (
             let rows: array<AsciiGridAdapters.richRowObject> =
               items->Array.map(row =>
                 switch JSON.Decode.object(row) {
-                | Some(obj) => obj->Dict.toArray->Array.reduce(Dict.make(), (acc, (key, value)) => {
-                    Dict.set(acc, key, jsonToCellValue(value))
-                    acc
-                  })
+                | Some(obj) => buildRichRow(obj)
                 | None => Dict.make()
                 }
               )
@@ -187,10 +199,7 @@ let parseJsonInput = (
             let rows: array<AsciiGridAdapters.rowObject> =
               items->Array.map(row =>
                 switch JSON.Decode.object(row) {
-                | Some(obj) => obj->Dict.toArray->Array.reduce(Dict.make(), (acc, (key, value)) => {
-                    Dict.set(acc, key, stringifyJsonCell(value))
-                    acc
-                  })
+                | Some(obj) => buildStringRow(obj)
                 | None => Dict.make()
                 }
               )
@@ -232,11 +241,8 @@ let parseNdjsonInput = (
             switch JSON.Decode.object(parsed) {
             | None => Error((2, "NDJSON lines must be JSON objects"))
             | Some(obj) => {
-                let row = obj->Dict.toArray->Array.reduce(Dict.make(), (d, (key, value)) => {
-                  Dict.set(d, key, jsonToCellValue(value))
-                  d
-                })
-                Ok([...rows, row])
+                rows->Array.push(buildRichRow(obj))
+                Ok(rows)
               }
             }
           }
@@ -265,11 +271,8 @@ let parseNdjsonInput = (
             switch JSON.Decode.object(parsed) {
             | None => Error((2, "NDJSON lines must be JSON objects"))
             | Some(obj) => {
-                let row = obj->Dict.toArray->Array.reduce(Dict.make(), (d, (key, value)) => {
-                  Dict.set(d, key, stringifyJsonCell(value))
-                  d
-                })
-                Ok([...rows, row])
+                rows->Array.push(buildStringRow(obj))
+                Ok(rows)
               }
             }
           }
@@ -294,7 +297,7 @@ let readInput = (inputPath: option<string>, positionals: array<string>): promise
   | Some(path) =>
     let content = Bindings.Fs.readFileSync(path, "utf8")
     Promise.resolve(content)
-  | None => Bindings.Stdio.readAll(Bindings.Process.stdin)
+  | None => Bindings.Stdio.readAll(Bindings.Stdio.stdin)
   }
 }
 

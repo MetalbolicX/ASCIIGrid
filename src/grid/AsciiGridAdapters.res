@@ -28,7 +28,9 @@ let normalizeMatrix = (rows: array<array<string>>): array<array<string>> => rows
 let normalizeRichMatrix = (rows: array<array<cellValue>>): array<array<string>> =>
   rows->Array.map(row => row->Array.map(stringifyCell))
 
-let extractKeysOrdered = (rows: array<rowObject>): array<string> => {
+// Polymorphic key extractor — works for any dict<'a> so both rowObject and
+// richRowObject share a single implementation.
+let extractKeysOrdered = (rows: array<dict<'a>>): array<string> => {
   let seen = Dict.make()
   let keys = Belt.Array.make(0, "")
 
@@ -41,7 +43,7 @@ let extractKeysOrdered = (rows: array<rowObject>): array<string> => {
       }
     }
 
-  rows->Array.forEach(row => Dict.toArray(row)->Array.forEach(((key, _value)) => addKey(key)))
+  rows->Array.forEach(row => Dict.toArray(row)->Array.forEach(((key, _)) => addKey(key)))
   keys
 }
 
@@ -59,29 +61,11 @@ let normalizeObjects = (rows: array<rowObject>): array<array<string>> => {
   }
 }
 
-// Private — same logic as extractKeysOrdered but typed for richRowObject (dict<cellValue>).
-let extractRichKeysOrdered = (rows: array<richRowObject>): array<string> => {
-  let seen = Dict.make()
-  let keys = Belt.Array.make(0, "")
-
-  let addKey = key =>
-    switch Dict.get(seen, key) {
-    | Some(_) => ()
-    | None => {
-        Dict.set(seen, key, true)
-        keys->Array.push(key)
-      }
-    }
-
-  rows->Array.forEach(row => Dict.toArray(row)->Array.forEach(((key, _value)) => addKey(key)))
-  keys
-}
-
 let normalizeRichObjects = (rows: array<richRowObject>): array<array<string>> => {
   if rows->Array.length == 0 {
     []
   } else {
-    let keys = extractRichKeysOrdered(rows)
+    let keys = extractKeysOrdered(rows)
     let header = keys->Array.map(key => key)
     let body = rows->Array.map(row =>
       keys->Array.map(key =>

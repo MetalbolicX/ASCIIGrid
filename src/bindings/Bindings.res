@@ -15,7 +15,6 @@ module Fs = {
 module Process = {
   @module("node:process") external argv: array<string> = "argv"
   @module("node:process") external exit: int => unit = "exit"
-  @module("node:process") external stdin: JSON.t = "stdin"
 
   module Stdout = {
     @module("node:process") @scope("stdout")
@@ -29,8 +28,12 @@ module Process = {
 }
 
 module Stdio = {
+  /** Opaque type for Node.js ReadableStream — prevents misuse with JSON.t. */
+  type readableStream
+
+  @module("node:process") external stdin: readableStream = "stdin"
   @module("node:stream/consumers")
-  external readAll: JSON.t => promise<string> = "text"
+  external readAll: readableStream => promise<string> = "text"
 }
 
 module Util = {
