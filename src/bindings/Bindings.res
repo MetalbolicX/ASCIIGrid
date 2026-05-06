@@ -10,12 +10,18 @@
 module Fs = {
   @module("node:fs") external readFileSync: ('source, string) => string = "readFileSync"
   @module("node:fs") external writeFileSync: (string, string) => unit = "writeFileSync"
+
+  type statResult = { size: int }
+
+  @module("node:fs") external statSync: string => statResult = "statSync"
 }
 
 module Process = {
   @module("node:process") external argv: array<string> = "argv"
   @module("node:process") external exit: int => unit = "exit"
   @val @scope("process") external nextTick: (() => unit) => unit = "nextTick"
+
+  @val @scope("process") external onSignal: (string, (() => unit)) => unit = "on"
 
   module Stdout = {
     @module("node:process") @scope("stdout")
@@ -43,6 +49,12 @@ module Stdio = {
   @module("node:process") external stdin: readableStream = "stdin"
   @module("node:stream/consumers")
   external readAll: readableStream => promise<string> = "text"
+}
+
+module Timer = {
+  type timerId
+  @scope("setTimeout") @val external setTimeout: ((() => unit), int) => timerId = "setTimeout"
+  @scope("clearTimeout") @val external clearTimeout: timerId => unit = "clearTimeout"
 }
 
 module Readline = {
@@ -105,6 +117,8 @@ module Util = {
     theme?: string,
     output?: string,
     rich?: bool,
+    verbose?: bool,
+    timeout?: string,
     @as("theme-file") themeFile?: string,
   }
 
@@ -123,4 +137,9 @@ module Util = {
 
   @module("node:util")
   external parseArgs: parseConfig => parseResults = "parseArgs"
+}
+
+module Env = {
+  @scope("process.env")
+  external getenv: string => string = "get"
 }

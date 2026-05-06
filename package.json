@@ -1,6 +1,6 @@
 {
   "name": "ASCIIGrid",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Show a beautiful table in your terminal",
   "type": "module",
   "scripts": {
@@ -40,7 +40,7 @@
     "node": ">=22.0.0"
   },
   "bin": {
-    "ASCIIGrid": "dist/cli.mjs"
+    "asciigrid": "dist/cli.mjs"
   },
   "main": "dist/cli.mjs"
 }

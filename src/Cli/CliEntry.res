@@ -1,5 +1,13 @@
 type cliError = (int, string)
 
+let shuttingDown = ref(false)
+
+let log = (msg: string): unit => {
+  if Logger.isVerbose.contents {
+    Bindings.Process.Stderr.write(`[INFO] ${msg}\n`)->ignore
+  }
+}
+
 // Both bind to Math.trunc. Float variant is used for the isInteger check
 // (needs float == float); int variant avoids the 32-bit |0 truncation of
 // Float.toInt so large integer-valued JSON numbers survive round-trip.
@@ -77,113 +85,151 @@ let buildStringRow = (obj: dict<JSON.t>): AsciiGridAdapters.rowObject =>
  *
  * Returns Ok(table) on success with accumulated widths.
  * Returns Error((2, message)) on first parse error.
+ * Returns Error((124, message)) on timeout.
  */
 let parseNdjsonStreaming = (
   ~stdin: Bindings.Stdio.readableStream,
   ~options: AsciiGridOptions.t,
   ~rich: bool,
+  ~timeoutSeconds: int,
 ): promise<result<string, cliError>> => {
   Promise.make((resolve, _reject) => {
     let rl = Bindings.Readline.createInterface({input: stdin, crlfDelay: 0})
 
-    // Mutable accumulators
     let rows: ref<array<AsciiGridAdapters.rowObject>> = ref([])
     let richRows: ref<array<AsciiGridAdapters.richRowObject>> = ref([])
     let columnWidths: ref<array<int>> = ref([])
     let rowCount: ref<int> = ref(0)
     let columnKeys: ref<array<string>> = ref([])
-    let resolved: ref<bool> = ref(false)  // Guard against double-resolution
+    let resolved: ref<bool> = ref(false)
+    let timerId: ref<option<Bindings.Timer.timerId>> = ref(None)
+
+    let clearTimer = () => {
+      switch timerId.contents {
+      | Some(id) => Bindings.Timer.clearTimeout(id)
+      | None => ()
+      }
+      timerId.contents = None
+    }
 
     let finish = (result: result<string, cliError>): unit => {
       if !resolved.contents {
         resolved.contents = true
+        clearTimer()
         rl->Bindings.Readline.close
         resolve(result)
       }
     }
 
-    // Process a single NDJSON line
-    let processLine = (line: string): unit => {
-      let trimmed = line->String.trim
-      if trimmed == "" {
-        // Skip empty lines
-        ()
-      } else {
-        // Parse and validate the NDJSON line
-        let parsedResult: result<JSON.t, cliError> =
-          try {
-            Ok(jsonParseUnsafe(trimmed))
-          } catch {
-          | _ => Error((2, "Invalid NDJSON line: " ++ trimmed))
+    let startTimeoutTimer = () => {
+      if timeoutSeconds > 0 {
+        clearTimer()
+        timerId.contents = Some(Bindings.Timer.setTimeout(() => {
+          finish(Error((124, "Timeout waiting for input")))
+        }, timeoutSeconds * 1000))
+      }
+    }
+
+    let updateWidthsFromRichRow = (richRow: AsciiGridAdapters.richRowObject) => {
+      let currentKeys = columnKeys.contents
+      let updatedWidths = columnWidths.contents->Array.mapWithIndex((i, currentWidth) =>
+        switch currentKeys->Array.get(i) {
+        | Some(key) =>
+          switch Dict.get(richRow, key) {
+          | Some(v) => {
+              let cellLen = AsciiGridAdapters.stringifyCell(v)->String.length
+              if cellLen > currentWidth { cellLen } else { currentWidth }
+            }
+          | None => currentWidth
           }
+        | None => currentWidth
+        }
+      )
+      columnWidths.contents = updatedWidths
+    }
 
-        switch parsedResult {
-        | Error(err) => finish(Error(err))
-        | Ok(parsed) =>
-          switch JSON.Decode.object(parsed) {
-          | None => finish(Error((2, "NDJSON lines must be JSON objects")))
-          | Some(obj) => {
-              rowCount.contents = rowCount.contents + 1
+    let updateWidthsFromStringRow = (stringRow: AsciiGridAdapters.rowObject) => {
+      let currentKeys = columnKeys.contents
+      let updatedWidths = columnWidths.contents->Array.mapWithIndex((i, currentWidth) =>
+        switch currentKeys->Array.get(i) {
+        | Some(key) =>
+          switch Dict.get(stringRow, key) {
+          | Some(cellStr) => {
+              let cellLen = cellStr->String.length
+              if cellLen > currentWidth { cellLen } else { currentWidth }
+            }
+          | None => currentWidth
+          }
+        | None => currentWidth
+        }
+      )
+      columnWidths.contents = updatedWidths
+    }
 
-              if rich {
-                let richRow = buildRichRow(obj)
-                if rowCount.contents == 1 {
-                  // First row: establish column count and widths from keys
-                  let firstRowKeys = obj->Dict.toArray->Array.map(((key, _)) => key)
-                  columnKeys.contents = firstRowKeys
-                  let widths = firstRowKeys->Array.map(key =>
-                    Dict.get(richRow, key)->Option.map(v => AsciiGridAdapters.stringifyCell(v)->String.length)->Option.getOr(0)
-                  )
-                  columnWidths.contents = widths
-                  richRows.contents->Array.push(richRow)
+    let initWidthsFromKeys = (keys: array<string>, row: AsciiGridAdapters.richRowObject) => {
+      columnKeys.contents = keys
+      let widths = keys->Array.map(key =>
+        Dict.get(row, key)->Option.map(v => AsciiGridAdapters.stringifyCell(v)->String.length)->Option.getOr(0)
+      )
+      columnWidths.contents = widths
+    }
+
+    let initWidthsFromStringRowKeys = (keys: array<string>, row: AsciiGridAdapters.rowObject) => {
+      columnKeys.contents = keys
+      let widths = keys->Array.map(key =>
+        Dict.get(row, key)->Option.getOr("")->String.length
+      )
+      columnWidths.contents = widths
+    }
+
+    let handleRichRow = (obj: dict<JSON.t>) => {
+      let richRow = buildRichRow(obj)
+      if rowCount.contents == 1 {
+        let firstRowKeys = obj->Dict.toArray->Array.map(((key, _)) => key)
+        initWidthsFromKeys(firstRowKeys, richRow)
+      } else {
+        updateWidthsFromRichRow(richRow)
+      }
+      richRows.contents->Array.push(richRow)
+    }
+
+    let handleStringRow = (obj: dict<JSON.t>) => {
+      let stringRow = buildStringRow(obj)
+      if rowCount.contents == 1 {
+        let firstRowKeys = obj->Dict.toArray->Array.map(((key, _)) => key)
+        initWidthsFromStringRowKeys(firstRowKeys, stringRow)
+      } else {
+        updateWidthsFromStringRow(stringRow)
+      }
+      rows.contents->Array.push(stringRow)
+    }
+
+    let processLine = (line: string): unit => {
+      if shuttingDown.contents {
+        finish(Error((0, "Shutdown requested")))
+      } else {
+        let trimmed = line->String.trim
+        if trimmed == "" {
+          startTimeoutTimer()
+        } else {
+          let parsedResult: result<JSON.t, cliError> =
+            try {
+              Ok(jsonParseUnsafe(trimmed))
+            } catch {
+            | _ => Error((2, "Invalid NDJSON line: " ++ trimmed))
+            }
+
+          switch parsedResult {
+          | Error(err) => finish(Error(err))
+          | Ok(parsed) =>
+            switch JSON.Decode.object(parsed) {
+            | None => finish(Error((2, "NDJSON lines must be JSON objects")))
+            | Some(obj) => {
+                rowCount.contents = rowCount.contents + 1
+                if rich {
+                  handleRichRow(obj)
                 } else {
-                  // Subsequent rows: update max widths
-                  let currentKeys = columnKeys.contents
-                  let updatedWidths = columnWidths.contents->Array.mapWithIndex((i, currentWidth) =>
-                    switch currentKeys->Array.get(i) {
-                    | Some(key) =>
-                      switch Dict.get(richRow, key) {
-                      | Some(v) => {
-                          let cellLen = AsciiGridAdapters.stringifyCell(v)->String.length
-                          if cellLen > currentWidth { cellLen } else { currentWidth }
-                        }
-                      | None => currentWidth
-                      }
-                    | None => currentWidth
-                    }
-                  )
-                  columnWidths.contents = updatedWidths
-                  richRows.contents->Array.push(richRow)
-                }
-              } else {
-                let stringRow = buildStringRow(obj)
-                if rowCount.contents == 1 {
-                  // First row: establish column count and widths from keys
-                  let firstRowKeys = obj->Dict.toArray->Array.map(((key, _)) => key)
-                  columnKeys.contents = firstRowKeys
-                  let widths = firstRowKeys->Array.map(key =>
-                    Dict.get(stringRow, key)->Option.getOr("")->String.length
-                  )
-                  columnWidths.contents = widths
-                  rows.contents->Array.push(stringRow)
-                } else {
-                  // Subsequent rows: update max widths
-                  let currentKeys = columnKeys.contents
-                  let updatedWidths = columnWidths.contents->Array.mapWithIndex((i, currentWidth) =>
-                    switch currentKeys->Array.get(i) {
-                    | Some(key) =>
-                      switch Dict.get(stringRow, key) {
-                      | Some(cellStr) => {
-                          let cellLen = cellStr->String.length
-                          if cellLen > currentWidth { cellLen } else { currentWidth }
-                        }
-                      | None => currentWidth
-                      }
-                    | None => currentWidth
-                    }
-                  )
-                  columnWidths.contents = updatedWidths
-                  rows.contents->Array.push(stringRow)
+                  handleStringRow(obj)
                 }
               }
             }
@@ -192,15 +238,12 @@ let parseNdjsonStreaming = (
       }
     }
 
-    // Handle readline errors
     let handleError = (err: string): unit => {
       finish(Error((2, "Stream error: " ++ err)))
     }
 
-    // Handle stream end — render accumulated data
     let handleEnd = (): unit => {
       if rowCount.contents == 0 {
-        // Empty stream
         switch AsciiGrid.render([], options) {
         | Ok(table) => finish(Ok(table))
         | Error(msg) => finish(Error((3, msg)))
@@ -218,12 +261,13 @@ let parseNdjsonStreaming = (
       }
     }
 
-    // Wire up event listeners — on() returns the interface for chaining
     rl
     ->Bindings.Readline.onLine("line", processLine)
     ->Bindings.Readline.onClose("close", handleEnd)
     ->Bindings.Readline.onError2("error", handleError)
     ->ignore
+
+    startTimeoutTimer()
   })
 }
 
@@ -244,46 +288,26 @@ let writeStdoutStreaming = (lines: array<string>): promise<unit> => {
         // Buffer had room — move to next line after next tick
         Promise.make((resolve, _reject) => {
           Bindings.Process.nextTick(() => {
-            loop(idx + 1)->Promise.thenResolve(_ => resolve())->ignore
+            loop(idx + 1)
+            ->Promise.thenResolve(_ => resolve())
+            ->Promise.catch(_ => {
+              resolve()
+              Promise.resolve()
+            })
+            ->ignore
           })
         })
       } else {
         // Buffer full — wait for drain, then continue
         Promise.make((resolve, _reject) => {
           Bindings.Process.Stdout.onceDrain(() => {
-            loop(idx + 1)->Promise.thenResolve(_ => resolve())->ignore
-          })
-        })
-      }
-    }
-  }
-
-  loop(0)
-}
-
-/**
- * Write lines to stdout with backpressure awareness and timeout.
- * If drain doesn't occur within 5 seconds, resolves anyway.
- */
-let writeStdoutStreamingWithTimeout = (lines: array<string>): promise<unit> => {
-  let rec loop = (idx: int): promise<unit> => {
-    if idx >= lines->Array.length {
-      Promise.resolve()
-    } else {
-      let line = lines->Array.get(idx)->Option.getOr("") ++ "\n"
-      let wrote = Bindings.Process.Stdout.writeWithCallback(line, () => ())
-
-      if wrote {
-        Promise.make((resolve, _reject) => {
-          Bindings.Process.nextTick(() => {
-            loop(idx + 1)->Promise.thenResolve(_ => resolve())->ignore
-          })
-        })
-      } else {
-        // Buffer full — wait for drain
-        Promise.make((resolve, _reject) => {
-          Bindings.Process.Stdout.onceDrain(() => {
-            loop(idx + 1)->Promise.thenResolve(_ => resolve())->ignore
+            loop(idx + 1)
+            ->Promise.thenResolve(_ => resolve())
+            ->Promise.catch(_ => {
+              resolve()
+              Promise.resolve()
+            })
+            ->ignore
           })
         })
       }
@@ -298,10 +322,8 @@ let writeStdoutStreamingWithTimeout = (lines: array<string>): promise<unit> => {
  */
 let exitOnError = (code: int, message: string): promise<unit> => {
   writeStderr(message ++ "\n")
-  writeStdoutStreaming([])->Promise.then(_ => {
-    Bindings.Process.exit(code)
-    Promise.resolve()
-  })
+  Bindings.Process.exit(code)
+  Promise.resolve()
 }
 
 let helpText =
@@ -318,11 +340,13 @@ let helpText =
   ++ "  -a, --align            Right-align numeric values\n"
   ++ "  -T, --theme <name>     mysql | unicode | oracle (default: mysql)\n"
   ++ "  -o, --output <file>    Write output file (default: stdout)\n"
+  ++ "  -v, --verbose          Enable verbose output\n"
+  ++ "      --timeout <sec>    Timeout for stdin (0 = disabled, default: 0)\n"
   ++ "      --rich             Preserve JSON value types\n"
   ++ "  -h, --help             Show help\n"
   ++ "      --version          Show version\n"
 
-let versionText = "ASCIIGrid 0.1.0\n"
+let versionText = "ASCIIGrid 1.0.0\n"
 
 let parseArgs = (): Bindings.Util.parseResults => {
   let options = Dict.make()
@@ -338,6 +362,8 @@ let parseArgs = (): Bindings.Util.parseResults => {
   setOption("theme", {type_: "string", short: "T", default: Bindings.Util.String("mysql")})
   setOption("output", {type_: "string", short: "o"})
   setOption("rich", {type_: "boolean", default: Bindings.Util.Bool(false)})
+  setOption("verbose", {type_: "boolean", short: "v", default: Bindings.Util.Bool(false)})
+  setOption("timeout", {type_: "string", default: Bindings.Util.String("0")})
   setOption("help", {type_: "boolean", short: "h", default: Bindings.Util.Bool(false)})
   setOption("version", {type_: "boolean", default: Bindings.Util.Bool(false)})
 
@@ -372,6 +398,17 @@ let parseFormat = (rawFormat: option<string>): result<string, cliError> => {
   | "json" => Ok("json")
   | "ndjson" => Ok("ndjson")
   | _ => Error((1, "Invalid format: " ++ normalized ++ ". Use json|ndjson"))
+  }
+}
+
+let parseTimeout = (rawTimeout: option<string>): int => {
+  switch rawTimeout {
+  | None => 0
+  | Some(value) =>
+    switch Int.fromString(value) {
+    | Some(n) => if n >= 0 { n } else { 0 }
+    | None => 0
+    }
   }
 }
 
@@ -537,8 +574,21 @@ let readInput = (inputPath: option<string>, positionals: array<string>): promise
 }
 
 let run = (): promise<unit> => {
+  // Set up signal handlers for graceful shutdown
+  Bindings.Process.onSignal("SIGINT", () => {
+    shuttingDown.contents = true
+    Bindings.Process.exit(130)
+  })
+  Bindings.Process.onSignal("SIGTERM", () => {
+    shuttingDown.contents = true
+    Bindings.Process.exit(0)
+  })
+
   let parsed = parseArgs()
   let values = parsed.values
+
+  // Initialize logger
+  Logger.init(~verbose=values.verbose->Option.getOr(false))
 
   if values.help->Option.getOr(false) {
     writeStdout(helpText)
@@ -581,6 +631,8 @@ let run = (): promise<unit> => {
 
           let isStdin = effectiveInput->Option.isNone
 
+          let timeout = parseTimeout(values.timeout)
+
           // For ndjson from stdin, use streaming; otherwise use bulk read
           if format == "ndjson" && isStdin {
             // Streaming stdin path — event-based line reading
@@ -588,6 +640,7 @@ let run = (): promise<unit> => {
               ~stdin=Bindings.Stdio.stdin,
               ~options,
               ~rich=values.rich->Option.getOr(false),
+              ~timeoutSeconds=timeout,
             )
             ->Promise.then(result => {
               switch result {

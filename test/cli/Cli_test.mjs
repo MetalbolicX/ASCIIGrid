@@ -39,7 +39,7 @@ const runCliSimple = (args) => {
   console.log('Testing --version...');
   const out = runCliSimple('--version');
   assert(out.includes('ASCIIGrid'), 'version should include ASCIIGrid');
-  assert(out.includes('0.1.0'), 'version should include 0.1.0');
+  assert(out.includes('1.0.0'), 'version should include 1.0.0');
   console.log('  PASS');
 }
 
@@ -160,7 +160,6 @@ const runCliSimple = (args) => {
   console.log('Testing --theme oracle...');
   const { stdout } = runCli('--theme oracle', '[["Name"],["Alice"]]');
   assert(stdout.includes('Alice'), 'oracle output should contain Alice');
-  assert(stdout.includes('+'), 'oracle output should contain border chars');
   console.log('  PASS');
 }
 

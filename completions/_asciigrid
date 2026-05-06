@@ -1,0 +1,26 @@
+#compdef asciigrid ASCIIGrid
+
+_asciigrid() {
+    local -a opts
+
+    opts=(
+        '--input[Input file path]:file:_files'
+        '--format[Input format]:format:(json ndjson)'
+        '--title[Table title]:text'
+        '--padding[Cell padding]:number'
+        '--no-header[Disable header separator]'
+        '--spreadsheet[Enable spreadsheet labels]'
+        '--align[Right-align numeric values]'
+        '--theme[Border theme]:theme:(mysql unicode oracle)'
+        '--output[Write output to file]:file:_files'
+        '--verbose[Enable verbose output]'
+        '--timeout[Timeout for stdin]:seconds'
+        '--rich[Preserve JSON value types]'
+        '--help[Show help]'
+        '--version[Show version]'
+    )
+
+    _arguments -s $opts
+}
+
+_asciigrid "$@"
