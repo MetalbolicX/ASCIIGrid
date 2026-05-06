@@ -122,3 +122,19 @@ let renderWithObjects = (
   let normalized = AsciiGridAdapters.normalizeObjects(rows)
   renderNormalized(normalized, options)
 }
+
+let renderRich = (
+  data: array<array<AsciiGridAdapters.cellValue>>,
+  options: AsciiGridOptions.t,
+): result<string, string> => {
+  let normalized = AsciiGridAdapters.normalizeRichMatrix(data)
+  renderNormalized(normalized, options)
+}
+
+let renderWithRichObjects = (
+  rows: array<AsciiGridAdapters.richRowObject>,
+  options: AsciiGridOptions.t,
+): result<string, string> => {
+  let normalized = AsciiGridAdapters.normalizeRichObjects(rows)
+  renderNormalized(normalized, options)
+}

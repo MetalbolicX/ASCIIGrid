@@ -4,12 +4,13 @@
   "description": "Show a beautiful table in your terminal",
   "type": "module",
   "scripts": {
-    "start": "node dist/main.mjs",
+    "start": "node dist/cli.mjs",
     "res:build": "rescript",
     "res:dev": "rescript watch",
     "res:clean": "rescript clean",
     "bundle": "rolldown -c",
-    "res:test": "retest ./test/res/**/*.res.mjs"
+    "res:test": "retest ./test/res/**/*.res.mjs",
+    "test:cli": "node test/cli/Cli_test.mjs"
   },
   "author": {
     "name": "José Martínez Santana"
@@ -39,7 +40,7 @@
     "node": ">=22.0.0"
   },
   "bin": {
-    "ASCIIGrid": "dist/main.mjs"
+    "ASCIIGrid": "dist/cli.mjs"
   },
-  "main": "dist/main.mjs"
+  "main": "dist/cli.mjs"
 }

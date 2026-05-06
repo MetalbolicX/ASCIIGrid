@@ -124,3 +124,117 @@ test("returns Error when title too long", () => {
   | Error(msg) => assertStringEqual("Title is too large", msg, "error must match")
   }
 })
+
+test("renders with unicode theme", () => {
+  switch AsciiGrid.render(matrix, {...AsciiGridOptions.defaults, theme: AsciiGridTheme.unicode}) {
+  | Ok(table) => {
+      assertContains(table, "╔", "has upper-left corner")
+      assertContains(table, "║", "has vertical wall")
+      assertContains(table, "╚", "has lower-left corner")
+    }
+  | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
+  }
+})
+
+test("applies padding 2", () => {
+  switch AsciiGrid.render(matrix, {...AsciiGridOptions.defaults, padding: 2}) {
+  | Ok(table) => assertContains(table, "  Name", "Name has double left padding")
+  | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
+  }
+})
+
+test("handles empty title string", () => {
+  switch AsciiGrid.render(matrix, {...AsciiGridOptions.defaults, title: Some("")}) {
+  | Ok(table) => {
+      let firstLine = table->String.split("\n")->Array.get(0)->Option.getOr("")
+      assertion(
+        (a, b) => a == b,
+        true,
+        firstLine->String.startsWith("+"),
+        ~operator="equals",
+        ~message="first line starts with +",
+      )
+    }
+  | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
+  }
+})
+
+test("handles single row", () => {
+  switch AsciiGrid.render([["Header"]], AsciiGridOptions.defaults) {
+  | Ok(table) => {
+      assertContains(table, "Header", "contains header text")
+      let lines = table->String.split("\n")
+      let allValid = lines->Array.every(l => l->String.startsWith("+") || l->String.startsWith("|"))
+      assertion((a, b) => a == b, true, allValid, ~operator="equals", ~message="all lines start with + or |")
+    }
+  | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
+  }
+})
+
+test("handles single column", () => {
+  switch AsciiGrid.render([["a"], ["b"], ["c"]], AsciiGridOptions.defaults) {
+  | Ok(table) => {
+      let wallLines =
+        table->String.split("\n")->Array.filter(l => l->String.startsWith("|"))
+      wallLines->Array.forEach(l =>
+        assertion(
+          (a, b) => a == b,
+          3,
+          l->String.split("|")->Array.length,
+          ~operator="equals",
+          ~message="single column: 3 parts per wall line",
+        )
+      )
+    }
+  | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
+  }
+})
+
+test("null CellNull values render as empty strings", () => {
+  let rows: array<AsciiGridAdapters.richRowObject> = [
+    Dict.fromArray([
+      ("a", AsciiGridAdapters.CellNull),
+      ("b", AsciiGridAdapters.CellNull),
+      ("c", AsciiGridAdapters.CellString("x")),
+    ]),
+  ]
+  switch AsciiGrid.renderWithRichObjects(rows, AsciiGridOptions.defaults) {
+  | Ok(table) => {
+      let dataLine = table->String.split("\n")->Array.get(3)->Option.getOr("")
+      assertStringEqual("|   |   | x |", dataLine, "null cells render as empty strings")
+    }
+  | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
+  }
+})
+
+test("CellBool values are stringified", () => {
+  let data: array<array<AsciiGridAdapters.cellValue>> = [
+    [AsciiGridAdapters.CellString("flag")],
+    [AsciiGridAdapters.CellBool(true)],
+    [AsciiGridAdapters.CellBool(false)],
+  ]
+  switch AsciiGrid.renderRich(data, AsciiGridOptions.defaults) {
+  | Ok(table) => {
+      assertContains(table, "true", "contains true")
+      assertContains(table, "false", "contains false")
+    }
+  | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
+  }
+})
+
+test("CellInt and CellFloat are stringified and right-aligned", () => {
+  let data: array<array<AsciiGridAdapters.cellValue>> = [
+    [AsciiGridAdapters.CellString("label"), AsciiGridAdapters.CellString("value")],
+    [AsciiGridAdapters.CellString("A"), AsciiGridAdapters.CellInt(1)],
+    [AsciiGridAdapters.CellString("B"), AsciiGridAdapters.CellFloat(22.5)],
+    [AsciiGridAdapters.CellString("C"), AsciiGridAdapters.CellInt(-3)],
+  ]
+  switch AsciiGrid.renderRich(data, {...AsciiGridOptions.defaults, align: true}) {
+  | Ok(table) => {
+      assertContains(table, "1", "contains 1")
+      assertContains(table, "22.5", "contains 22.5")
+      assertContains(table, "-3", "contains -3")
+    }
+  | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
+  }
+})
