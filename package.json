@@ -9,7 +9,7 @@
     "res:dev": "rescript watch",
     "res:clean": "rescript clean",
     "bundle": "rolldown -c",
-    "res:test": "retest ./test/res/*.res.mjs"
+    "res:test": "retest ./test/res/**/*.res.mjs"
   },
   "author": {
     "name": "José Martínez Santana"

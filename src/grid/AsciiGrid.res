@@ -37,16 +37,18 @@ let rec intToColumnLetter = (n: int): string => {
 }
 
 let isNumeric = (s: string): bool => {
-  let parsed = s->Float.parseFloat
+  let normalized = s->String.trim
+  let lowered = normalized->String.toLowerCase
+  let parsed = normalized->Float.parseFloat
   if Float.isFinite(parsed) {
     true
   } else {
-    let date = s->Date.fromString
+    let date = normalized->Date.fromString
     let ms = date->Date.getTime
     if !Float.isNaN(ms) {
       true
     } else {
-      s->String.toLowerCase == "null"
+      lowered == "null"
     }
   }
 }
@@ -69,7 +71,7 @@ let createSeparator = (colLengths: array<int>, sepType: separatorType, theme: As
   | TitleBottom | Middle => theme.AsciiGridTheme.intersection
   }
 
-  let lineSegment = theme.AsciiGridTheme.line->String.repeat(padding * 2 + 1)
+  let lineSegment = theme.AsciiGridTheme.line->String.repeat(padding * 2)
   let len = colLengths->Belt.Array.length
 
   let rec loop = (i: int, acc: string): string => {
@@ -100,10 +102,7 @@ let convertSpreadsheet = (table: array<array<string>>, header: bool): array<arra
 
   let spreadrow = Belt.Array.make(colCount, "")
   for i in 0 to colCount - 1 {
-    let ch = switch String.get("ABCDEFGHIJKLMNOPQRSTUVWXYZ", i) {
-    | Some(c) => c
-    | None => ""
-    }
+    let ch = intToColumnLetter(i)
     spreadrow[i] = ch
   }
 
@@ -111,9 +110,9 @@ let convertSpreadsheet = (table: array<array<string>>, header: bool): array<arra
 
   tableWithSpreadrow->Belt.Array.mapWithIndex((i, row) => {
     let char = if header {
-      if i > 1 { Int.toString(i - 1) } else { " " }
+      if i > 0 { Int.toString(i - 1) } else { " " }
     } else {
-      if i > 0 { Int.toString(i) } else { " " }
+      Int.toString(i + 1)
     }
     [char, ...row]
   })
@@ -235,25 +234,19 @@ let render = (data: data, options: AsciiGridOptions.t): result<string, string> =
               | Some(l) => l
               | None => 0
               }
-              let leftPad = " "->String.repeat(padding)
               let cellLen = cell->String.length
 
-              let alignedCell = if options.AsciiGridOptions.align && isNumeric(cell) {
-                let extra = colLen - cellLen
-                if extra > 0 {
-                  " "->String.repeat(extra) ++ cell
-                } else {
-                  cell
-                }
+              if options.AsciiGridOptions.align && isNumeric(cell) {
+                let targetLen = colLen + padding * 2
+                let leftSpaces = targetLen - cellLen - padding
+                let safeLeftSpaces = if leftSpaces > 0 { leftSpaces } else { 0 }
+                " "->String.repeat(safeLeftSpaces) ++ cell ++ " "->String.repeat(padding)
               } else {
-                cell
+                let targetLen = colLen + padding * 2
+                let rightSpaces = targetLen - cellLen - padding
+                let safeRightSpaces = if rightSpaces > 0 { rightSpaces } else { 0 }
+                " "->String.repeat(padding) ++ cell ++ " "->String.repeat(safeRightSpaces)
               }
-
-              let rightPadNeeded = colLen - alignedCell->String.length
-              let rightPadExtra = if rightPadNeeded > 0 { rightPadNeeded - padding } else { 0 }
-              let rightPad = " "->String.repeat(padding + rightPadExtra)
-
-              leftPad ++ alignedCell ++ rightPad
             })
 
             let cellStr = cells->Belt.Array.reduce("", (acc, cell) =>

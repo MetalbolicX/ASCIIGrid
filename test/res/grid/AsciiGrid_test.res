@@ -1,227 +1,141 @@
 open Test
 
-/**
- * Test suite for AsciiGrid core functionality.
- * Tests cover rendering, themes, alignment, spreadsheet mode, and error cases.
- */
+let assertStringEqual = (expected: string, actual: string, message: string): unit =>
+  assertion((a, b) => a == b, expected, actual, ~operator="String equals to", ~message=message)
 
-// ===== Basic 2x2 rendering =====
-test("renders basic 2x2 table with MySQL theme", () => {
-  let basicData: AsciiGrid.data = [
-    ["A", "B"],
-    ["1", "2"],
-  ]
-  let result = AsciiGrid.render(basicData, AsciiGridOptions.defaults)
-  switch result {
+let assertContains = (text: string, needle: string, message: string): unit =>
+  assertion((a, b) => a == b, true, text->String.includes(needle), ~operator="Contains", ~message=message)
+
+test("renders exact basic matrix output", () => {
+  let data: AsciiGrid.data = [["a", "bb"], ["ccc", "d"]]
+  let expected =
+    "+-----+----+\n"
+    ++ "| a   | bb |\n"
+    ++ "+-----+----+\n"
+    ++ "| ccc | d  |\n"
+    ++ "+-----+----+"
+
+  switch AsciiGrid.render(data, AsciiGridOptions.defaults) {
+  | Ok(table) => assertStringEqual(expected, table, "basic matrix must match reference output")
+  | Error(msg) => fail(~message="Expected Ok, got Error: " ++ msg, ())
+  }
+})
+
+test("renders exact title block output", () => {
+  let data: AsciiGrid.data = [["Name", "Age", "City"], ["Alice", "30", "NYC"], ["Bob", "25", "LA"]]
+  let options = {...AsciiGridOptions.defaults, title: Some("Users")}
+  let expected =
+    "+--------------------+\n"
+    ++ "|       Users        |\n"
+    ++ "+-------+-----+------+\n"
+    ++ "| Name  | Age | City |\n"
+    ++ "+-------+-----+------+\n"
+    ++ "| Alice | 30  | NYC  |\n"
+    ++ "| Bob   | 25  | LA   |\n"
+    ++ "+-------+-----+------+"
+
+  switch AsciiGrid.render(data, options) {
+  | Ok(table) => assertStringEqual(expected, table, "title rendering must match reference output")
+  | Error(msg) => fail(~message="Expected Ok, got Error: " ++ msg, ())
+  }
+})
+
+test("renders exact spreadsheet output with header", () => {
+  let data: AsciiGrid.data = [["Name", "Age", "City"], ["Alice", "30", "NYC"], ["Bob", "25", "LA"]]
+  let options = {...AsciiGridOptions.defaults, spreadsheet: true, header: true}
+  let expected =
+    "+---+-------+-----+------+\n"
+    ++ "|   | A     | B   | C    |\n"
+    ++ "+---+-------+-----+------+\n"
+    ++ "| 0 | Name  | Age | City |\n"
+    ++ "+---+-------+-----+------+\n"
+    ++ "| 1 | Alice | 30  | NYC  |\n"
+    ++ "| 2 | Bob   | 25  | LA   |\n"
+    ++ "+---+-------+-----+------+"
+
+  switch AsciiGrid.render(data, options) {
+  | Ok(table) => assertStringEqual(expected, table, "spreadsheet with header must match reference output")
+  | Error(msg) => fail(~message="Expected Ok, got Error: " ++ msg, ())
+  }
+})
+
+test("renders exact spreadsheet output without header", () => {
+  let data: AsciiGrid.data = [["Name", "Age", "City"], ["Alice", "30", "NYC"], ["Bob", "25", "LA"]]
+  let options = {...AsciiGridOptions.defaults, spreadsheet: true, header: false}
+  let expected =
+    "+---+-------+-----+------+\n"
+    ++ "| 1 | A     | B   | C    |\n"
+    ++ "+---+-------+-----+------+\n"
+    ++ "| 2 | Name  | Age | City |\n"
+    ++ "| 3 | Alice | 30  | NYC  |\n"
+    ++ "| 4 | Bob   | 25  | LA   |\n"
+    ++ "+---+-------+-----+------+"
+
+  switch AsciiGrid.render(data, options) {
+  | Ok(table) => assertStringEqual(expected, table, "spreadsheet without header must match reference output")
+  | Error(msg) => fail(~message="Expected Ok, got Error: " ++ msg, ())
+  }
+})
+
+test("renders exact numeric alignment output", () => {
+  let data: AsciiGrid.data = [["Item", "Price"], ["Apple", "42"], ["Banana", "7"]]
+  let options = {...AsciiGridOptions.defaults, align: true}
+  let expected =
+    "+--------+-------+\n"
+    ++ "| Item   | Price |\n"
+    ++ "+--------+-------+\n"
+    ++ "| Apple  |    42 |\n"
+    ++ "| Banana |     7 |\n"
+    ++ "+--------+-------+"
+
+  switch AsciiGrid.render(data, options) {
+  | Ok(table) => assertStringEqual(expected, table, "numeric alignment must match reference output")
+  | Error(msg) => fail(~message="Expected Ok, got Error: " ++ msg, ())
+  }
+})
+
+test("supports spreadsheet columns beyond Z", () => {
+  let row = Belt.Array.makeBy(28, i => Int.toString(i))
+  let data: AsciiGrid.data = [row]
+  let options = {...AsciiGridOptions.defaults, spreadsheet: true, header: false}
+
+  switch AsciiGrid.render(data, options) {
   | Ok(table) => {
-      let firstChar = switch String.get(table, 0) {
-      | Some(c) => c
-      | None => ""
-      }
-      assertion(
-        (a, b) => a == b,
-        "+",
-        firstChar,
-        ~operator="String equals to",
-        ~message="Starts with +",
-      )
-      assertion(
-        (a, b) => a == b,
-        true,
-        table->String.includes("A"),
-        ~operator="Contains A",
-        ~message="Contains A",
-      )
-      assertion(
-        (a, b) => a == b,
-        true,
-        table->String.includes("1"),
-        ~operator="Contains 1",
-        ~message="Contains 1",
-      )
+      assertContains(table, "AA", "must contain AA column label")
+      assertContains(table, "AB", "must contain AB column label")
     }
-  | Error(msg) => {
-      Console.log("Error: " ++ msg)
-      fail(~message="Expected Ok, got Error", ())
-    }
+  | Error(msg) => fail(~message="Expected Ok, got Error: " ++ msg, ())
   }
 })
 
-// ===== Header separator =====
-test("renders header separator when header is true", () => {
-  let headerData: AsciiGrid.data = [
-    ["Name", "Age", "City"],
-    ["Alice", "30", "New York"],
-    ["Bob", "25", "San Francisco"],
-  ]
-  let result = AsciiGrid.render(headerData, AsciiGridOptions.defaults)
-  switch result {
-  | Ok(table) => {
-      assertion(
-        (a, b) => a == b,
-        true,
-        table->String.includes("Name"),
-        ~operator="Contains Name",
-        ~message="Contains Name header",
-      )
-      assertion(
-        (a, b) => a == b,
-        true,
-        table->String.includes("Age"),
-        ~operator="Contains Age",
-        ~message="Contains Age header",
-      )
-    }
-  | Error(msg) => {
-      Console.log("Error: " ++ msg)
-      fail(~message="Expected Ok, got Error", ())
-    }
-  }
-})
-
-// ===== Title rendering =====
-test("renders centered title between top and bottom separators", () => {
-  let basicData: AsciiGrid.data = [
-    ["A", "B"],
-    ["1", "2"],
-  ]
-  let options = { ...AsciiGridOptions.defaults, title: Some("My Table") }
-  let result = AsciiGrid.render(basicData, options)
-  switch result {
-  | Ok(table) => assertion(
-      (a, b) => a == b,
-      true,
-      table->String.includes("My Table"),
-      ~operator="Contains title",
-      ~message="Contains title",
-    )
-  | Error(msg) => {
-      Console.log("Error: " ++ msg)
-      fail(~message="Expected Ok, got Error", ())
-    }
-  }
-})
-
-// ===== Unicode theme =====
-test("renders with Unicode box-drawing characters", () => {
-  let basicData: AsciiGrid.data = [
-    ["A", "B"],
-    ["1", "2"],
-  ]
-  let options = { ...AsciiGridOptions.defaults, theme: AsciiGridTheme.unicode }
-  let result = AsciiGrid.render(basicData, options)
-  switch result {
-  | Ok(table) => {
-      assertion(
-        (a, b) => a == b,
-        true,
-        table->String.includes("╔"),
-        ~operator="Contains ╔",
-        ~message="Has Unicode upper-left corner",
-      )
-      assertion(
-        (a, b) => a == b,
-        true,
-        table->String.includes("║"),
-        ~operator="Contains ║",
-        ~message="Has Unicode wall",
-      )
-    }
-  | Error(msg) => {
-      Console.log("Error: " ++ msg)
-      fail(~message="Expected Ok, got Error", ())
-    }
-  }
-})
-
-// ===== Numeric alignment =====
-test("right-aligns numeric values when align is true", () => {
-  let numData: AsciiGrid.data = [
-    ["Item", "Price"],
-    ["Apple", "42"],
-    ["Banana", "7"],
-  ]
-  let options = { ...AsciiGridOptions.defaults, align: true }
-  let result = AsciiGrid.render(numData, options)
-  switch result {
-  | Ok(table) => assertion(
-      (a, b) => a == b,
-      true,
-      table->String.includes("42"),
-      ~operator="Contains 42",
-      ~message="Contains number 42",
-    )
-  | Error(msg) => {
-      Console.log("Error: " ++ msg)
-      fail(~message="Expected Ok, got Error", ())
-    }
-  }
-})
-
-// ===== Spreadsheet mode =====
-test("renders with column letters and row numbers in spreadsheet mode", () => {
-  let basicData: AsciiGrid.data = [
-    ["A", "B"],
-    ["1", "2"],
-  ]
-  let options = { ...AsciiGridOptions.defaults, spreadsheet: true }
-  let result = AsciiGrid.render(basicData, options)
-  switch result {
-  | Ok(table) => {
-      assertion(
-        (a, b) => a == b,
-        true,
-        table->String.includes("A"),
-        ~operator="Contains A",
-        ~message="Contains column letter A",
-      )
-      assertion(
-        (a, b) => a == b,
-        true,
-        table->String.includes("B"),
-        ~operator="Contains B",
-        ~message="Contains column letter B",
-      )
-    }
-  | Error(msg) => {
-      Console.log("Error: " ++ msg)
-      fail(~message="Expected Ok, got Error", ())
-    }
-  }
-})
-
-// ===== Uneven columns error =====
 test("returns Error for uneven column counts", () => {
-  let unevenData: AsciiGrid.data = [
-    ["A"],
-    ["1", "2"],
-  ]
-  let result = AsciiGrid.render(unevenData, AsciiGridOptions.defaults)
-  switch result {
+  let unevenData: AsciiGrid.data = [["A"], ["1", "2"]]
+  switch AsciiGrid.render(unevenData, AsciiGridOptions.defaults) {
   | Ok(_) => fail(~message="Expected Error for uneven columns", ())
-  | Error(msg) => assertion(
-      (a, b) => a == b,
-      "Uneven number of columns",
-      msg,
-      ~operator="String equals to",
-      ~message="Error message matches",
-    )
+  | Error(msg) => assertStringEqual("Uneven number of columns", msg, "error message must match")
   }
 })
 
-// ===== Title too large error =====
 test("returns Error when title exceeds available width", () => {
   let tinyData: AsciiGrid.data = [["X"]]
-  let options = { ...AsciiGridOptions.defaults, title: Some("This title is way too long for this tiny table") }
-  let result = AsciiGrid.render(tinyData, options)
-  switch result {
+  let options = {...AsciiGridOptions.defaults, title: Some("This title is way too long for this tiny table")}
+
+  switch AsciiGrid.render(tinyData, options) {
   | Ok(_) => fail(~message="Expected Error for title too large", ())
-  | Error(msg) => assertion(
-      (a, b) => a == b,
-      "Title is too large",
-      msg,
-      ~operator="String equals to",
-      ~message="Error message matches",
-    )
+  | Error(msg) => assertStringEqual("Title is too large", msg, "error message must match")
+  }
+})
+
+test("renders with Unicode theme", () => {
+  let basicData: AsciiGrid.data = [["A", "B"], ["1", "2"]]
+  let options = {...AsciiGridOptions.defaults, theme: AsciiGridTheme.unicode}
+
+  switch AsciiGrid.render(basicData, options) {
+  | Ok(table) => {
+      assertContains(table, "╔", "must contain unicode upper-left corner")
+      assertContains(table, "║", "must contain unicode wall")
+      assertContains(table, "╚", "must contain unicode lower-left corner")
+    }
+  | Error(msg) => fail(~message="Expected Ok, got Error: " ++ msg, ())
   }
 })
