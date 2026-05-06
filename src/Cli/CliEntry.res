@@ -57,8 +57,8 @@ let parseArgs = (): Bindings.Util.parseResults => {
   setOption("help", {type_: "boolean", short: "h", default: Bindings.Util.Bool(false)})
   setOption("version", {type_: "boolean", default: Bindings.Util.Bool(false)})
 
-  let args = Belt.Array.sliceToEnd(Bindings.Process.argv, 2)
-  Bindings.Util.parseArgs({args: args, options: options, allowPositionals: true})
+  let args = Bindings.Process.argv->Array.slice(~start=2)
+  Bindings.Util.parseArgs({args, options, allowPositionals: true})
 }
 
 let parsePadding = (rawPadding: option<string>): int => {
