@@ -5,7 +5,6 @@
  *
  * @module AsciiGridTheme
  */
-
 type t = {
   upperLeft: string,
   upperRight: string,

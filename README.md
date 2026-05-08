@@ -51,6 +51,7 @@ cat records.ndjson | asciigrid --format ndjson
 | `-o, --output <file>` | Write output to file | stdout |
 | `-v, --verbose` | Enable verbose output | - |
 | `--timeout <sec>` | Timeout for stdin (0 = disabled) | `0` |
+| `--max-rows <n>` | Maximum rows to process | `100000` |
 | `--rich` | Preserve JSON value types | - |
 | `-h, --help` | Show help | - |
 | `--version` | Show version | - |
@@ -151,6 +152,12 @@ echo '[["value"],[30],[22.5],[true],[null]]' | asciigrid --rich
 cat | asciigrid --timeout 5
 ```
 
+### Max Rows Guardrail
+```bash
+# Reject input larger than 10k rows
+cat records.ndjson | asciigrid --format ndjson --max-rows 10000
+```
+
 ## Input Formats
 
 ### JSON Array
@@ -178,6 +185,7 @@ cat | asciigrid --timeout 5
 - `4`: Unexpected error
 - `124`: Timeout
 - `130`: Interrupted (SIGINT)
+- `143`: Terminated (SIGTERM)
 
 ## License
 

@@ -6,7 +6,7 @@ _asciigrid() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    opts='--input --format --title --padding --no-header --spreadsheet --align --theme --output --verbose --timeout --rich --help --version'
+    opts='--input --format --title --padding --no-header --spreadsheet --align --theme --output --verbose --timeout --max-rows --rich --help --version'
 
     case "$prev" in
         --input|-i)
@@ -25,6 +25,9 @@ _asciigrid() {
             return 0
             ;;
         --timeout)
+            return 0
+            ;;
+        --max-rows)
             return 0
             ;;
         --output|-o)

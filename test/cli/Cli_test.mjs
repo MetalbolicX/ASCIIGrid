@@ -27,6 +27,14 @@ const runCliSimple = (args) => {
   return result.stdout;
 };
 
+const runCliWithStdin = (args, input = '') => {
+  const result = spawnSync('node', [cliPath, ...args.split(' ').filter(Boolean)], {
+    input,
+    encoding: 'utf8',
+  });
+  return { stdout: result.stdout, stderr: result.stderr, status: result.status };
+};
+
 {
   console.log('Testing --help...');
   const out = runCliSimple('--help');
@@ -69,6 +77,32 @@ const runCliSimple = (args) => {
   const { stdout } = runCli('--format ndjson', '{"name":"Alice","age":30}\n{"name":"Bob","age":25}\n');
   assert(stdout.includes('name'), 'output should include name');
   assert(stdout.includes('Alice'), 'output should include Alice');
+  console.log('  PASS');
+}
+
+{
+  console.log('Testing NDJSON streaming from stdin...');
+  const { stdout, status } = runCliWithStdin('--format ndjson', '{"name":"Alice"}\n{"name":"Bob"}\n');
+  assert(status === 0, `stdin streaming should exit 0, got ${status}`);
+  assert(stdout.includes('Alice'), 'stdin streaming output should include Alice');
+  assert(stdout.includes('Bob'), 'stdin streaming output should include Bob');
+  console.log('  PASS');
+}
+
+{
+  console.log('Testing NDJSON streaming parse error includes details...');
+  const { stderr, status } = runCliWithStdin('--format ndjson', '{"ok":1}\n{"broken":}\n');
+  assert(status === 2, `invalid ndjson should exit with code 2, got ${status}`);
+  assert(stderr.includes('Invalid NDJSON line'), 'stderr should include NDJSON parse context');
+  assert(stderr.toLowerCase().includes('unexpected'), 'stderr should include parser detail');
+  console.log('  PASS');
+}
+
+{
+  console.log('Testing --max-rows rejects oversized input...');
+  const { stderr, status } = runCliWithStdin('--format ndjson --max-rows 1', '{"x":1}\n{"x":2}\n');
+  assert(status === 1, `max rows overflow should exit code 1, got ${status}`);
+  assert(stderr.includes('maximum row limit'), 'stderr should mention maximum row limit');
   console.log('  PASS');
 }
 
@@ -140,6 +174,20 @@ const runCliSimple = (args) => {
   assert(content.includes('Alice'), 'file output should contain Alice');
   assert(content.includes('+---'), 'file output should contain border');
   unlinkSync(tmpOut);
+  console.log('  PASS');
+}
+
+{
+  console.log('Testing unwritable --output path returns error details...');
+  const tmpFile = `/tmp/asciigrid-test-${Date.now()}.json`;
+  writeFileSync(tmpFile, '[["Name"],["Alice"]]');
+  try {
+    const result = spawnSync('node', [cliPath, '--input', tmpFile, '--output', '/proc/1/readonly.txt'], { encoding: 'utf8' });
+    assert(result.status === 4, `unwritable output should exit with code 4, got ${result.status}`);
+    assert(result.stderr.includes('Failed to write output file'), 'stderr should include write failure context');
+  } finally {
+    try { unlinkSync(tmpFile); } catch {}
+  }
   console.log('  PASS');
 }
 

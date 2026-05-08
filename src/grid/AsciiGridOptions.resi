@@ -3,7 +3,6 @@
  *
  * @module AsciiGridOptions
  */
-
 type t = {
   title: option<string>,
   padding: int,

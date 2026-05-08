@@ -11,6 +11,7 @@ complete -c asciigrid -l theme -s T -r -d 'Border theme' -f -a 'mysql unicode or
 complete -c asciigrid -l output -s o -r -d 'Write output to file' -f
 complete -c asciigrid -l verbose -s v -d 'Enable verbose output'
 complete -c asciigrid -l timeout -r -d 'Timeout for stdin (0 = disabled)'
+complete -c asciigrid -l max-rows -r -d 'Maximum rows to process (default: 100000)'
 complete -c asciigrid -l rich -d 'Preserve JSON value types'
 complete -c asciigrid -l help -s h -d 'Show help'
 complete -c asciigrid -l version -d 'Show version'

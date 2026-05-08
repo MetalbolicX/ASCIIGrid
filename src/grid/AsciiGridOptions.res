@@ -6,7 +6,6 @@
  *
  * @module Options
  */
-
 type t = {
   /** Optional table title displayed centered at the top. */
   title: option<string>,

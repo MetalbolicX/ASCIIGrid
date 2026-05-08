@@ -4,14 +4,18 @@
  *
  * @module Logger
  */
-
 type level = Error | Warn | Info | Debug
 
 let isVerbose = ref(false)
 let isDebug = ref(false)
 
+@val @scope("JSON")
+external jsonStringify: dict<string> => string = "stringify"
+
 let init = (~verbose: bool): unit => {
   isVerbose.contents = verbose
+  isDebug.contents =
+    Dict.get(Bindings.Env.env, "DEBUG")->Option.map(v => v != "")->Option.getOr(false)
 }
 
 let log = (level: level, msg: string): unit => {
@@ -23,13 +27,18 @@ let log = (level: level, msg: string): unit => {
   }
 
   if shouldLog {
-    let prefix = switch level {
-    | Error => "ERROR"
-    | Warn => "WARN"
-    | Info => "INFO"
-    | Debug => "DEBUG"
+    let levelText = switch level {
+    | Error => "error"
+    | Warn => "warn"
+    | Info => "info"
+    | Debug => "debug"
     }
-    Bindings.Process.Stderr.write(`[${prefix}] ${msg}\n`)->ignore
+    let ts = Date.now()->Float.toString
+    let payload = Dict.make()
+    Dict.set(payload, "level", levelText)
+    Dict.set(payload, "ts", ts)
+    Dict.set(payload, "msg", msg)
+    Bindings.Process.Stderr.write(jsonStringify(payload) ++ "\n")->ignore
   }
 }
 

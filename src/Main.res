@@ -3,7 +3,6 @@
  *
  * @module Main
  */
-
 let main = () => {
   let data: AsciiGrid.data = [
     ["Name", "Age", "City"],

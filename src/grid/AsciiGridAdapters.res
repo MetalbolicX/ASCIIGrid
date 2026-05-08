@@ -19,7 +19,12 @@ let stringifyCell = (v: cellValue): string =>
   | CellString(s) => s
   | CellInt(i) => Int.toString(i)
   | CellFloat(f) => Float.toString(f)
-  | CellBool(b) => if b { "true" } else { "false" }
+  | CellBool(b) =>
+    if b {
+      "true"
+    } else {
+      "false"
+    }
   | CellNull => ""
   }
 

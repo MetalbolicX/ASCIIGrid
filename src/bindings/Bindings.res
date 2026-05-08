@@ -6,12 +6,11 @@
  *
  * @module Bindings
  */
-
 module Fs = {
   @module("node:fs") external readFileSync: ('source, string) => string = "readFileSync"
   @module("node:fs") external writeFileSync: (string, string) => unit = "writeFileSync"
 
-  type statResult = { size: int }
+  type statResult = {size: int}
 
   @module("node:fs") external statSync: string => statResult = "statSync"
 }
@@ -19,9 +18,9 @@ module Fs = {
 module Process = {
   @module("node:process") external argv: array<string> = "argv"
   @module("node:process") external exit: int => unit = "exit"
-  @val @scope("process") external nextTick: (() => unit) => unit = "nextTick"
+  @val @scope("process") external nextTick: (unit => unit) => unit = "nextTick"
 
-  @val @scope("process") external onSignal: (string, (() => unit)) => unit = "on"
+  @val @scope("process") external onSignal: (string, unit => unit) => unit = "on"
 
   module Stdout = {
     @module("node:process") @scope("stdout")
@@ -29,11 +28,11 @@ module Process = {
 
     /** Write string with callback invoked on drain. Returns false when buffer is full. */
     @module("node:process") @scope("stdout")
-    external writeWithCallback: (string, () => unit) => bool = "write"
+    external writeWithCallback: (string, unit => unit) => bool = "write"
 
     /** Register a one-time callback for the drain event (auto-removes after firing). */
     @module("node:process") @scope("stdout")
-    external onceDrain: (() => unit) => unit = "once"
+    external onceDrain: (unit => unit) => unit = "once"
   }
 
   module Stderr = {
@@ -47,13 +46,14 @@ module Stdio = {
   type readableStream
 
   @module("node:process") external stdin: readableStream = "stdin"
+  @module("node:fs") external createReadStream: string => readableStream = "createReadStream"
   @module("node:stream/consumers")
   external readAll: readableStream => promise<string> = "text"
 }
 
 module Timer = {
   type timerId
-  @scope("setTimeout") @val external setTimeout: ((() => unit), int) => timerId = "setTimeout"
+  @scope("setTimeout") @val external setTimeout: (unit => unit, int) => timerId = "setTimeout"
   @scope("clearTimeout") @val external clearTimeout: timerId => unit = "clearTimeout"
 }
 
@@ -72,11 +72,11 @@ module Readline = {
 
   /** Register a handler for the 'line' event — receives each line as it's read. */
   @send
-  external onLine: (interface, string, (string => unit)) => interface = "on"
+  external onLine: (interface, string, string => unit) => interface = "on"
 
   /** Register a handler for the 'close' event — fired when input is exhausted. */
   @send
-  external onClose: (interface, string, (() => unit)) => interface = "on"
+  external onClose: (interface, string, unit => unit) => interface = "on"
 
   /**
    * Register a handler for the 'error' event.
@@ -84,7 +84,7 @@ module Readline = {
    * also takes (interface, string, callback) but for a different callback arity).
    */
   @send
-  external onError2: (interface, string, ((string) => unit)) => interface = "on"
+  external onError2: (interface, string, string => unit) => interface = "on"
 
   /** Close the readline interface, cleaning up resources. */
   @send
@@ -119,6 +119,7 @@ module Util = {
     rich?: bool,
     verbose?: bool,
     timeout?: string,
+    @as("max-rows") maxRows?: string,
     @as("theme-file") themeFile?: string,
   }
 
@@ -137,9 +138,11 @@ module Util = {
 
   @module("node:util")
   external parseArgs: parseConfig => parseResults = "parseArgs"
+
+  @module("node:util")
+  external inspect: 'a => string = "inspect"
 }
 
 module Env = {
-  @scope("process.env")
-  external getenv: string => string = "get"
+  @val @scope("process") external env: dict<string> = "env"
 }

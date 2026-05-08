@@ -30,6 +30,9 @@ jobs:
       - name: Build ReScript
         run: npm run res:build
 
+      - name: Check ReScript formatting
+        run: ./node_modules/.bin/rescript format --check
+
       - name: Bundle CLI
         run: npm run bundle
 

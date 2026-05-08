@@ -123,9 +123,10 @@ let render = (data: data, options: AsciiGridOptions.t): result<string, string> =
 let renderWithObjects = (
   rows: array<AsciiGridAdapters.rowObject>,
   options: AsciiGridOptions.t,
+  ~columnWidths=?,
 ): result<string, string> => {
   let normalized = AsciiGridAdapters.normalizeObjects(rows)
-  renderNormalized(normalized, options)
+  renderNormalized(normalized, options, ~columnWidths?)
 }
 
 let renderRich = (
@@ -139,7 +140,8 @@ let renderRich = (
 let renderWithRichObjects = (
   rows: array<AsciiGridAdapters.richRowObject>,
   options: AsciiGridOptions.t,
+  ~columnWidths=?,
 ): result<string, string> => {
   let normalized = AsciiGridAdapters.normalizeRichObjects(rows)
-  renderNormalized(normalized, options)
+  renderNormalized(normalized, options, ~columnWidths?)
 }

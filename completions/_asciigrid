@@ -15,6 +15,7 @@ _asciigrid() {
         '--output[Write output to file]:file:_files'
         '--verbose[Enable verbose output]'
         '--timeout[Timeout for stdin]:seconds'
+        '--max-rows[Maximum rows to process]:rows'
         '--rich[Preserve JSON value types]'
         '--help[Show help]'
         '--version[Show version]'

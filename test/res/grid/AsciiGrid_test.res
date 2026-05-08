@@ -6,55 +6,43 @@ let assertStringEqual = (expected: string, actual: string, message: string) =>
 let assertContains = (text: string, needle: string, message: string) =>
   assertion((a, b) => a == b, true, text->String.includes(needle), ~operator="Contains", ~message)
 
-let matrix = [
-  ["Name", "Age", "City"],
-  ["Alice", "30", "NYC"],
-  ["Bob", "25", "LA"],
-]
+let matrix = [["Name", "Age", "City"], ["Alice", "30", "NYC"], ["Bob", "25", "LA"]]
 
 let expectedBasic =
-  "+-----+----+\n"
-  ++ "| a   | bb |\n"
-  ++ "+-----+----+\n"
-  ++ "| ccc | d  |\n"
-  ++ "+-----+----+"
+  "+-----+----+\n" ++ "| a   | bb |\n" ++ "+-----+----+\n" ++ "| ccc | d  |\n" ++ "+-----+----+"
 
 let expectedTitle =
-  "+--------------------+\n"
-  ++ "|       Users        |\n"
-  ++ "+-------+-----+------+\n"
-  ++ "| Name  | Age | City |\n"
-  ++ "+-------+-----+------+\n"
-  ++ "| Alice | 30  | NYC  |\n"
-  ++ "| Bob   | 25  | LA   |\n"
-  ++ "+-------+-----+------+"
+  "+--------------------+\n" ++
+  "|       Users        |\n" ++
+  "+-------+-----+------+\n" ++
+  "| Name  | Age | City |\n" ++
+  "+-------+-----+------+\n" ++
+  "| Alice | 30  | NYC  |\n" ++
+  "| Bob   | 25  | LA   |\n" ++ "+-------+-----+------+"
 
 let expectedSpreadsheetHeader =
-  "+---+-------+-----+------+\n"
-  ++ "|   | A     | B   | C    |\n"
-  ++ "+---+-------+-----+------+\n"
-  ++ "| 0 | Name  | Age | City |\n"
-  ++ "+---+-------+-----+------+\n"
-  ++ "| 1 | Alice | 30  | NYC  |\n"
-  ++ "| 2 | Bob   | 25  | LA   |\n"
-  ++ "+---+-------+-----+------+"
+  "+---+-------+-----+------+\n" ++
+  "|   | A     | B   | C    |\n" ++
+  "+---+-------+-----+------+\n" ++
+  "| 0 | Name  | Age | City |\n" ++
+  "+---+-------+-----+------+\n" ++
+  "| 1 | Alice | 30  | NYC  |\n" ++
+  "| 2 | Bob   | 25  | LA   |\n" ++ "+---+-------+-----+------+"
 
 let expectedSpreadsheetNoHeader =
-  "+---+-------+-----+------+\n"
-  ++ "| 1 | A     | B   | C    |\n"
-  ++ "+---+-------+-----+------+\n"
-  ++ "| 2 | Name  | Age | City |\n"
-  ++ "| 3 | Alice | 30  | NYC  |\n"
-  ++ "| 4 | Bob   | 25  | LA   |\n"
-  ++ "+---+-------+-----+------+"
+  "+---+-------+-----+------+\n" ++
+  "| 1 | A     | B   | C    |\n" ++
+  "+---+-------+-----+------+\n" ++
+  "| 2 | Name  | Age | City |\n" ++
+  "| 3 | Alice | 30  | NYC  |\n" ++
+  "| 4 | Bob   | 25  | LA   |\n" ++ "+---+-------+-----+------+"
 
 let expectedNumericAlignment =
-  "+--------+-------+\n"
-  ++ "| Item   | Price |\n"
-  ++ "+--------+-------+\n"
-  ++ "| Apple  |    42 |\n"
-  ++ "| Banana |     7 |\n"
-  ++ "+--------+-------+"
+  "+--------+-------+\n" ++
+  "| Item   | Price |\n" ++
+  "+--------+-------+\n" ++
+  "| Apple  |    42 |\n" ++
+  "| Banana |     7 |\n" ++ "+--------+-------+"
 
 let createRowObject = arr => Dict.fromArray(arr)
 
@@ -75,14 +63,19 @@ test("renders title block", () => {
 
 test("renders spreadsheet mode with header", () => {
   switch AsciiGrid.render(matrix, {...AsciiGridOptions.defaults, spreadsheet: true, header: true}) {
-  | Ok(table) => assertStringEqual(expectedSpreadsheetHeader, table, "spreadsheet+header must match")
+  | Ok(table) =>
+    assertStringEqual(expectedSpreadsheetHeader, table, "spreadsheet+header must match")
   | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
   }
 })
 
 test("renders spreadsheet mode without header", () => {
-  switch AsciiGrid.render(matrix, {...AsciiGridOptions.defaults, spreadsheet: true, header: false}) {
-  | Ok(table) => assertStringEqual(expectedSpreadsheetNoHeader, table, "spreadsheet-no-header must match")
+  switch AsciiGrid.render(
+    matrix,
+    {...AsciiGridOptions.defaults, spreadsheet: true, header: false},
+  ) {
+  | Ok(table) =>
+    assertStringEqual(expectedSpreadsheetNoHeader, table, "spreadsheet-no-header must match")
   | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
   }
 })
@@ -90,7 +83,8 @@ test("renders spreadsheet mode without header", () => {
 test("aligns numeric cells", () => {
   let data = [["Item", "Price"], ["Apple", "42"], ["Banana", "7"]]
   switch AsciiGrid.render(data, {...AsciiGridOptions.defaults, align: true}) {
-  | Ok(table) => assertStringEqual(expectedNumericAlignment, table, "numeric alignment must match reference")
+  | Ok(table) =>
+    assertStringEqual(expectedNumericAlignment, table, "numeric alignment must match reference")
   | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
   }
 })
@@ -119,7 +113,10 @@ test("returns Error for uneven columns", () => {
 })
 
 test("returns Error when title too long", () => {
-  switch AsciiGrid.render([["X"]], {...AsciiGridOptions.defaults, title: Some("This title is way too long for this tiny table")}) {
+  switch AsciiGrid.render(
+    [["X"]],
+    {...AsciiGridOptions.defaults, title: Some("This title is way too long for this tiny table")},
+  ) {
   | Ok(_) => fail(~message="Expected Error for title too large", ())
   | Error(msg) => assertStringEqual("Title is too large", msg, "error must match")
   }
@@ -165,7 +162,13 @@ test("handles single row", () => {
       assertContains(table, "Header", "contains header text")
       let lines = table->String.split("\n")
       let allValid = lines->Array.every(l => l->String.startsWith("+") || l->String.startsWith("|"))
-      assertion((a, b) => a == b, true, allValid, ~operator="equals", ~message="all lines start with + or |")
+      assertion(
+        (a, b) => a == b,
+        true,
+        allValid,
+        ~operator="equals",
+        ~message="all lines start with + or |",
+      )
     }
   | Error(msg) => fail(~message="Expected Ok, got " ++ msg, ())
   }
@@ -174,8 +177,7 @@ test("handles single row", () => {
 test("handles single column", () => {
   switch AsciiGrid.render([["a"], ["b"], ["c"]], AsciiGridOptions.defaults) {
   | Ok(table) => {
-      let wallLines =
-        table->String.split("\n")->Array.filter(l => l->String.startsWith("|"))
+      let wallLines = table->String.split("\n")->Array.filter(l => l->String.startsWith("|"))
       wallLines->Array.forEach(l =>
         assertion(
           (a, b) => a == b,
