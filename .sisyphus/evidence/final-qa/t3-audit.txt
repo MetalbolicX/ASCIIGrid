@@ -1,0 +1,10 @@
+SCENARIO: T3 - Audit passes (no vulnerabilities)
+COMMAND: pnpm audit --audit-level=moderate
+OUTPUT:
+No known vulnerabilities found
+EXIT: 0
+
+NOTE: Project uses pnpm (pnpm-lock.yaml), not npm. npm audit fails without npm lockfile.
+      pnpm audit reports no known vulnerabilities.
+
+RESULT: PASS

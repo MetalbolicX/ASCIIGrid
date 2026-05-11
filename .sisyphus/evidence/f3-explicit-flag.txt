@@ -1,0 +1,6 @@
+=== 1KB+ line with --max-line-bytes 1000 ===
+Line length: 1011
+Exit code: 1 (expected 1)
+Rejects correctly: true
+Stderr: Line exceeds maximum byte limit: 1000
+

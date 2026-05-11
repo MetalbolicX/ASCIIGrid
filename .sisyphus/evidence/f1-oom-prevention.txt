@@ -1,0 +1,5 @@
+=== 15MB line (OOM prevention) ===
+Exit code: 1 (expected 1)
+Stderr: Line exceeds maximum byte limit: 10000000
+
+No OOM crash: true (process completed)

@@ -1,0 +1,8 @@
+=== 100KB line ===
+Exit code: 0 (expected 0)
+Has output: true
+
+=== 20MB line ===
+Exit code: 1 (expected 1)
+Stderr: Line exceeds maximum byte limit: 10000000
+

@@ -129,9 +129,10 @@ let renderRow = (
 }
 
 let buildTitleLine = (title: string, availableWidth: int, theme: AsciiGridTheme.t): string => {
-  let titleLen = title->String.length
+  let sanitizedTitle = Sanitize.stripAnsiEscapes(title)
+  let titleLen = sanitizedTitle->String.length
   let totalPadding = availableWidth - titleLen
   let leftPad = " "->String.repeat(totalPadding / 2)
   let rightPad = " "->String.repeat(totalPadding - totalPadding / 2)
-  theme.AsciiGridTheme.wall ++ leftPad ++ title ++ rightPad ++ theme.AsciiGridTheme.wall
+  theme.AsciiGridTheme.wall ++ leftPad ++ sanitizedTitle ++ rightPad ++ theme.AsciiGridTheme.wall
 }

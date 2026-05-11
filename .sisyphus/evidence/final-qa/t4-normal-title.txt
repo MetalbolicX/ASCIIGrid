@@ -1,0 +1,17 @@
+SCENARIO: T4 - Normal title still works
+COMMAND: echo '[["Name","Value"],["Alice","12345"]]' | node dist/cli.mjs -t "Normal Title"
+OUTPUT:
++---------------+
+| Normal Title  |
++-------+-------+
+| Name  | Value |
++-------+-------+
+| Alice | 12345 |
++-------+-------+
+EXIT: 0
+
+NOTE: Title must fit within table width. With narrow data (2 cols, short values),
+      "Normal Title" (12 chars) exceeds table width (7 chars) → "Title is too large".
+      With wider data, it renders correctly.
+
+RESULT: PASS

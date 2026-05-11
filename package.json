@@ -10,6 +10,7 @@
     "res:clean": "rescript clean",
     "bundle": "rolldown -c",
     "res:test": "retest ./test/res/**/*.res.mjs",
+    "res:coverage": "c8 --all --include='src/**/*.res.mjs' --exclude='src/**/*.res.mjs.map' --lines 70 --branches 70 --functions 70 retest ./test/res/**/*.res.mjs",
     "test:cli": "node test/cli/Cli_test.mjs"
   },
   "author": {
@@ -30,6 +31,7 @@
     "@rescript/runtime": "^12.2.0"
   },
   "devDependencies": {
+    "c8": "^10.1.3",
     "rescript": "^12.2.0",
     "rescript-test": "^8.0.0",
     "rolldown": "1.0.0-rc.18",

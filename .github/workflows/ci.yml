@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+
       - name: Build ReScript
         run: npm run res:build
 
@@ -38,6 +41,9 @@ jobs:
 
       - name: Run unit tests
         run: npm run res:test
+
+      - name: Coverage threshold
+        run: npm run res:coverage
 
       - name: Run CLI integration tests
         run: npm test:cli

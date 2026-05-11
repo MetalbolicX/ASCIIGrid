@@ -1,0 +1,14 @@
+SCENARIO: T5 - Rich mode with ANSI in cell values
+COMMAND: echo '{"Name": "\u001b[32mGreen\u001b[0m"}' | node dist/cli.mjs --rich --format ndjson
+OUTPUT (cat -v):
++-------+
+| Name  |
++-------+
+| Green |
++-------+
+EXIT: 0
+
+NOTE: JSON-escaped ANSI (\u001b) used since literal ESC in JSON string is invalid JSON.
+      ANSI codes stripped, "Green" renders cleanly.
+
+RESULT: PASS

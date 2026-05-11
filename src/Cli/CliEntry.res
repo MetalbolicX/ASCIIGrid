@@ -69,7 +69,7 @@ let writeStderr = (text: string): unit => {
 
 let stringifyJsonCell = (value: JSON.t): string =>
   switch JSON.Decode.string(value) {
-  | Some(s) => s
+  | Some(s) => Sanitize.stripAnsiEscapes(s)
   | None =>
     switch JSON.Decode.float(value) {
     | Some(n) => Float.toString(n)
@@ -88,7 +88,7 @@ let stringifyJsonCell = (value: JSON.t): string =>
 
 let jsonToCellValue = (value: JSON.t): AsciiGridAdapters.cellValue =>
   switch JSON.Decode.string(value) {
-  | Some(s) => AsciiGridAdapters.CellString(s)
+  | Some(s) => AsciiGridAdapters.CellString(Sanitize.stripAnsiEscapes(s))
   | None =>
     switch JSON.Decode.float(value) {
     | Some(n) =>
@@ -738,9 +738,9 @@ let run = (): promise<unit> => {
           Bindings.Process.exit(code)
           Promise.resolve()
         }
-      | Ok(theme) => {
+        | Ok(theme) => {
           let options: AsciiGridOptions.t = {
-            title: values.title,
+            title: values.title->Option.map(Sanitize.stripAnsiEscapes),
             padding: parsePadding(values.padding),
             header: !(values.noHeader->Option.getOr(false)),
             spreadsheet: values.spreadsheet->Option.getOr(false),

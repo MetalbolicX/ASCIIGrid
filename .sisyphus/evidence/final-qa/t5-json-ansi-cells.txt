@@ -1,0 +1,11 @@
+SCENARIO: T5 - JSON mode with ANSI in cell values
+COMMAND: echo '[["Name"],["\u001b[31mRed\u001b[0m"]]' | node dist/cli.mjs
+OUTPUT (cat -v):
++------+
+| Name |
++------+
+| Red  |
++------+
+EXIT: 0
+
+RESULT: PASS - "Red" visible, NO raw ANSI escape codes in output

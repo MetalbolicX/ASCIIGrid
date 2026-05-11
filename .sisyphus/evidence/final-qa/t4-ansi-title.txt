@@ -1,0 +1,13 @@
+SCENARIO: T4 - Title with ANSI codes renders safely
+COMMAND: echo '[["Name","Value"],["Alice","12345"]]' | node dist/cli.mjs -t $'\x1b[31mRed Title\x1b[0m'
+OUTPUT (cat -v):
++---------------+
+|   Red Title   |
++-------+-------+
+| Name  | Value |
++-------+-------+
+| Alice | 12345 |
++-------+-------+
+EXIT: 0
+
+RESULT: PASS - "Red Title" visible, NO raw ANSI escape codes in output
