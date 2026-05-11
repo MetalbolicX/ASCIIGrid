@@ -34,6 +34,22 @@ let parseMaxRows = (raw: option<string>): int => {
   }
 }
 
+let parseMaxLineBytes = (raw: option<string>): int => {
+  switch raw {
+  | None => 10000000
+  | Some(value) =>
+    switch Int.fromString(value) {
+    | Some(n) =>
+      if n > 0 {
+        n
+      } else {
+        10000000
+      }
+    | None => 10000000
+    }
+  }
+}
+
 let writeOutput = (path: string, table: string): result<unit, cliError> => {
   try {
     Bindings.Fs.writeFileSync(path, table ++ "\n")
@@ -120,6 +136,7 @@ let parseNdjsonStreaming = (
   ~rich: bool,
   ~timeoutSeconds: int,
   ~maxRows: int,
+  ~maxLineBytes: int,
 ): promise<result<string, cliError>> => {
   Promise.make((resolve, _reject) => {
     let rl = Bindings.Readline.createInterface({input: stdin, crlfDelay: 0})
@@ -247,6 +264,8 @@ let parseNdjsonStreaming = (
         let trimmed = line->String.trim
         if trimmed == "" {
           startTimeoutTimer()
+        } else if trimmed->String.length > maxLineBytes {
+          finish(Error((1, "Line exceeds maximum byte limit: " ++ Int.toString(maxLineBytes))))
         } else {
           let parsedResult: result<JSON.t, cliError> = try {
             Ok(jsonParse(trimmed))
@@ -394,6 +413,7 @@ let helpText =
   "  -v, --verbose          Enable verbose output\n" ++
   "      --timeout <sec>    Timeout for stdin (0 = disabled, default: 0)\n" ++
   "      --max-rows <n>     Maximum rows to process (default: 100000)\n" ++
+  "      --max-line-bytes <n> Maximum bytes per NDJSON line (default: 10000000)\n" ++
   "      --rich             Preserve JSON value types\n" ++
   "  -h, --help             Show help\n" ++ "      --version          Show version\n"
 
@@ -416,6 +436,7 @@ let parseArgs = (): Bindings.Util.parseResults => {
   setOption("verbose", {type_: "boolean", short: "v", default: Bindings.Util.Bool(false)})
   setOption("timeout", {type_: "string", default: Bindings.Util.String("0")})
   setOption("max-rows", {type_: "string", default: Bindings.Util.String("100000")})
+  setOption("max-line-bytes", {type_: "string", default: Bindings.Util.String("10000000")})
   setOption("help", {type_: "boolean", short: "h", default: Bindings.Util.Bool(false)})
   setOption("version", {type_: "boolean", default: Bindings.Util.Bool(false)})
 
@@ -658,9 +679,10 @@ let streamNdjsonFromFile = (
   rich: bool,
   timeout: int,
   maxRows: int,
+  maxLineBytes: int,
 ): promise<result<string, cliError>> => {
   let stream = Bindings.Stdio.createReadStream(path)
-  parseNdjsonStreaming(~stdin=stream, ~options, ~rich, ~timeoutSeconds=timeout, ~maxRows)
+  parseNdjsonStreaming(~stdin=stream, ~options, ~rich, ~timeoutSeconds=timeout, ~maxRows, ~maxLineBytes)
 }
 
 let writeTable = (outputPath: option<string>, table: string): promise<unit> => {
@@ -734,6 +756,7 @@ let run = (): promise<unit> => {
 
           let timeout = parseTimeout(values.timeout)
           let maxRows = parseMaxRows(values.maxRows)
+          let maxLineBytes = parseMaxLineBytes(values.maxLineBytes)
 
           // For ndjson, always stream (stdin or file). JSON remains bulk read.
           if format == "ndjson" {
@@ -745,6 +768,7 @@ let run = (): promise<unit> => {
                 ~rich=values.rich->Option.getOr(false),
                 ~timeoutSeconds=timeout,
                 ~maxRows,
+                ~maxLineBytes,
               )
             | Some(path) =>
               streamNdjsonFromFile(
@@ -753,6 +777,7 @@ let run = (): promise<unit> => {
                 values.rich->Option.getOr(false),
                 timeout,
                 maxRows,
+                maxLineBytes,
               )
             }
 

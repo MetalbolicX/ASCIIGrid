@@ -40,6 +40,7 @@ const runCliWithStdin = (args, input = '') => {
   const out = runCliSimple('--help');
   assert(out.includes('Usage:'), 'help should include Usage');
   assert(out.includes('--input'), 'help should include --input');
+  assert(out.includes('--max-line-bytes'), 'help should include --max-line-bytes');
   console.log('  PASS');
 }
 
@@ -103,6 +104,37 @@ const runCliWithStdin = (args, input = '') => {
   const { stderr, status } = runCliWithStdin('--format ndjson --max-rows 1', '{"x":1}\n{"x":2}\n');
   assert(status === 1, `max rows overflow should exit code 1, got ${status}`);
   assert(stderr.includes('maximum row limit'), 'stderr should mention maximum row limit');
+  console.log('  PASS');
+}
+
+{
+  console.log('Testing --max-line-bytes rejects oversized line...');
+  // Build a 200-character line (200 bytes in ASCII) and set limit to 100 bytes
+  const bigValue = 'x'.repeat(200);
+  const bigLine = `{"data":"${bigValue}"}\n`;
+  const { stderr, status } = runCliWithStdin('--format ndjson --max-line-bytes 100', bigLine);
+  assert(status === 1, `oversized line should exit code 1, got ${status}`);
+  assert(stderr.includes('maximum byte limit'), 'stderr should mention byte limit');
+  console.log('  PASS');
+}
+
+{
+  console.log('Testing --max-line-bytes accepts line under limit...');
+  // Build a 20-character value; JSON wraps it: {"data":"xxxx..."} is ~30 bytes
+  const smallValue = 'x'.repeat(5);
+  const smallLine = `{"data":"${smallValue}"}\n`;
+  const { stdout, status } = runCliWithStdin('--format ndjson --max-line-bytes 100', smallLine);
+  assert(status === 0, `line within limit should exit 0, got ${status}`);
+  assert(stdout.includes('data'), 'output should include column name');
+  console.log('  PASS');
+}
+
+{
+  console.log('Testing --max-line-bytes default allows normal lines...');
+  // A normal short line should pass without any --max-line-bytes flag
+  const { stdout, status } = runCliWithStdin('--format ndjson', '{"name":"Alice","age":30}\n');
+  assert(status === 0, `normal line should exit 0 with default limit, got ${status}`);
+  assert(stdout.includes('Alice'), 'output should include Alice');
   console.log('  PASS');
 }
 

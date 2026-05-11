@@ -120,6 +120,7 @@ module Util = {
     verbose?: bool,
     timeout?: string,
     @as("max-rows") maxRows?: string,
+    @as("max-line-bytes") maxLineBytes?: string,
     @as("theme-file") themeFile?: string,
   }
 

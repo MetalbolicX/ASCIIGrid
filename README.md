@@ -52,6 +52,7 @@ cat records.ndjson | asciigrid --format ndjson
 | `-v, --verbose` | Enable verbose output | - |
 | `--timeout <sec>` | Timeout for stdin (0 = disabled) | `0` |
 | `--max-rows <n>` | Maximum rows to process | `100000` |
+| `--max-line-bytes <n>` | Maximum bytes per NDJSON line | `10000000` |
 | `--rich` | Preserve JSON value types | - |
 | `-h, --help` | Show help | - |
 | `--version` | Show version | - |
