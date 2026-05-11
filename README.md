@@ -1,8 +1,8 @@
+<h1 align="center">ASCIIGrid</h1>
+
 <p align="center">
   <img src="images/asciigrid-logo.svg" alt="ASCIIGrid logo" width="320" />
 </p>
-
-<h1 align="center">ASCIIGrid</h1>
 
 <p align="center">Render beautiful ASCII tables from JSON and NDJSON directly in your terminal.</p>
 
@@ -38,13 +38,12 @@
 
 ---
 
-## Description
+## Overview
 
 ASCIIGrid converts JSON arrays and NDJSON streams into human-friendly ASCII tables you can view in any terminal. It's optimized for streaming large datasets and provides formatting options that make tabular data easy to scan at a glance.
 
----
-
 ## ✨ Features
+
 - Multiple input formats: JSON arrays and NDJSON (newline-delimited JSON).
 - Streaming support: process large NDJSON files line-by-line without loading everything into memory.
 - Spreadsheet mode: show column letters (A, B, C...) and row numbers.
@@ -52,17 +51,16 @@ ASCIIGrid converts JSON arrays and NDJSON streams into human-friendly ASCII tabl
 - Theme support: multiple border themes (mysql, unicode, oracle).
 - Rich type preservation: preserve JSON types (numbers, booleans, nulls).
 
----
-
 ## 🚀 Installation
 
 Install globally with npm:
 
-```bash
+```sh
 npm install -g asciigrid
 ```
 
-> Note: Requires Node.js >= 22.0.0
+> [!NOTE]
+> Requires Node.js >= 22.0.0
 
 ---
 
@@ -72,23 +70,21 @@ ASCIIGrid accepts input from stdin or a file and renders a formatted ASCII table
 
 ### From stdin
 
-```bash
+```sh
 echo '[["Name","Age"],["Alice","30"],["Bob","25"]]' | asciigrid
 ```
 
 ### From file
 
-```bash
+```sh
 asciigrid --input data.json
 ```
 
 ### NDJSON streaming
 
-```bash
+```sh
 cat records.ndjson | asciigrid --format ndjson
 ```
-
----
 
 ### CLI Reference
 
@@ -111,17 +107,15 @@ cat records.ndjson | asciigrid --format ndjson
 | `-h, --help` | Show help | - |
 | `--version` | Show version | - |
 
----
-
 ## Examples
 
 ### Basic Table
 
-```bash
+```sh
 echo '[["Name","City"],["Alice","NYC"],["Bob","LA"]]' | asciigrid
 ```
 
-```
+```text
 +-------+-------+
 | Name  | City  |
 +-------+-------+
@@ -132,11 +126,11 @@ echo '[["Name","City"],["Alice","NYC"],["Bob","LA"]]' | asciigrid
 
 ### With Title
 
-```bash
+```sh
 echo '[["Name","Age"],["Alice","30"],["Bob","25"]]' | asciigrid --title "Users"
 ```
 
-```
+```text
 +--------------------+
 |       Users        |
 +-------+-----+------+
@@ -149,11 +143,11 @@ echo '[["Name","Age"],["Alice","30"],["Bob","25"]]' | asciigrid --title "Users"
 
 ### Spreadsheet Mode
 
-```bash
+```sh
 echo '[["Name","Age"],["Alice","30"]]' | asciigrid --spreadsheet
 ```
 
-```
+```text
 +---+-------+-----+------+
 |   | A     | B   | C    |
 +---+-------+-----+------+
@@ -165,11 +159,11 @@ echo '[["Name","Age"],["Alice","30"]]' | asciigrid --spreadsheet
 
 ### Unicode Theme
 
-```bash
+```sh
 echo '[["Name"],["Alice"]]' | asciigrid --theme unicode
 ```
 
-```
+```text
 ╔═══════╗
 ║ Name  ║
 ╠═══════╣
@@ -179,18 +173,18 @@ echo '[["Name"],["Alice"]]' | asciigrid --theme unicode
 
 ### NDJSON Streaming
 
-```bash
+```sh
 echo '{"name":"Alice","age":30}
 {"name":"Bob","age":25}' | asciigrid --format ndjson
 ```
 
 ### Numeric Alignment
 
-```bash
+```sh
 echo '[["Item","Price"],["Apple",42],["Banana",7]]' | asciigrid --align
 ```
 
-```
+```text
 +--------+-------+
 | Item   | Price |
 +--------+-------+
@@ -201,11 +195,11 @@ echo '[["Item","Price"],["Apple",42],["Banana",7]]' | asciigrid --align
 
 ### Rich Type Preservation
 
-```bash
+```sh
 echo '[["value"],[30],[22.5],[true],[null]]' | asciigrid --rich
 ```
 
-```
+```text
 +-------+-------+
 | value |       |
 +-------+-------+
@@ -218,19 +212,17 @@ echo '[["value"],[30],[22.5],[true],[null]]' | asciigrid --rich
 
 ### Timeout
 
-```bash
+```sh
 # Will timeout after 5 seconds of no input
 cat | asciigrid --timeout 5
 ```
 
 ### Max Rows Guardrail
 
-```bash
+```sh
 # Reject input larger than 10k rows
 cat records.ndjson | asciigrid --format ndjson --max-rows 10000
 ```
-
----
 
 ## Input Formats
 
@@ -253,8 +245,6 @@ cat records.ndjson | asciigrid --format ndjson --max-rows 10000
 {"name": "Bob", "age": 25}
 ```
 
----
-
 ## Exit Codes
 
 - `0`: Success
@@ -265,8 +255,6 @@ cat records.ndjson | asciigrid --format ndjson --max-rows 10000
 - `124`: Timeout
 - `130`: Interrupted (SIGINT)
 - `143`: Terminated (SIGTERM)
-
----
 
 ## 📜 License
 
